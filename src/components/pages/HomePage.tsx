@@ -81,12 +81,12 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
         <div className="film-strip rounded overflow-hidden" style={{ height: '180px', padding: '0 36px' }}>
           <div className="flex gap-1 h-full items-center overflow-hidden">
             {[
-              'https://picsum.photos/seed/godfather/300/170',
-              'https://picsum.photos/seed/darknight/300/170',
-              'https://picsum.photos/seed/shawshank/300/170',
-              'https://picsum.photos/seed/interstellar/300/170',
-              'https://picsum.photos/seed/matrix1999/300/170',
-              'https://picsum.photos/seed/lotr2001/300/170',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/eda56e2e-ca3e-4f5f-be85-687312c98be5.jpg',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/74cf669e-9163-4de5-8c87-183d832bcd27.jpg',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/6b286a3a-3532-4a5c-80ea-43dc4f16f397.jpg',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/ec3a3a9f-7bed-49c9-b258-30ff18229e9c.jpg',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/33a67666-7b2d-4725-98d8-92148ade1386.jpg',
+              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/d82d44ee-3603-4703-bd77-c8807f5a4914.jpg',
             ].map((url, i) => (
               <div key={i} className="flex-shrink-0 h-36 w-48 overflow-hidden" style={{
                 filter: 'brightness(0.6) sepia(0.2)',
