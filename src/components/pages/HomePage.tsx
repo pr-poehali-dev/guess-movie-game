@@ -81,12 +81,12 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
         <div className="film-strip rounded overflow-hidden" style={{ height: '180px', padding: '0 36px' }}>
           <div className="flex gap-1 h-full items-center overflow-hidden">
             {[
-              'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=300&q=70',
-              'https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=300&q=70',
-              'https://images.unsplash.com/photo-1565608438257-fac3c27bdbf4?w=300&q=70',
-              'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&q=70',
-              'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&q=70',
-              'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&q=70',
+              'https://picsum.photos/seed/godfather/300/170',
+              'https://picsum.photos/seed/darknight/300/170',
+              'https://picsum.photos/seed/shawshank/300/170',
+              'https://picsum.photos/seed/interstellar/300/170',
+              'https://picsum.photos/seed/matrix1999/300/170',
+              'https://picsum.photos/seed/lotr2001/300/170',
             ].map((url, i) => (
               <div key={i} className="flex-shrink-0 h-36 w-48 overflow-hidden" style={{
                 filter: 'brightness(0.6) sepia(0.2)',
