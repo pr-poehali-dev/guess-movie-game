@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { movies, achievements } from '@/data/movies';
+import { achievements } from '@/data/movies';
+import { useTmdbImages } from '@/hooks/useTmdbImages';
 import { GameStats } from '@/pages/Index';
 import Icon from '@/components/ui/icon';
 
@@ -20,6 +21,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function GamePage({ onFinish, stats }: GamePageProps) {
+  const { movies, loading: moviesLoading } = useTmdbImages();
   const [queue, setQueue] = useState(() => shuffle(movies).slice(0, 10));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lives, setLives] = useState(3);
@@ -31,6 +33,12 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
   const [newAchievements, setNewAchievements] = useState<string[]>([]);
   const [showAchievement, setShowAchievement] = useState<string | null>(null);
   const [lostLives, setLostLives] = useState(0);
+
+  useEffect(() => {
+    if (!moviesLoading) {
+      setQueue(shuffle(movies).slice(0, 10));
+    }
+  }, [moviesLoading]);
 
   const current = queue[currentIndex];
 
@@ -103,6 +111,17 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
   };
 
   const progress = ((currentIndex) / queue.length) * 100;
+
+  if (moviesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="text-5xl mb-4 animate-pulse">🎬</div>
+          <p className="text-gold font-oswald tracking-widest text-sm uppercase">Загружаем кадры из фильмов...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (gameState === 'gameover' || gameState === 'finished') {
     const isWin = gameState === 'finished';

@@ -1,5 +1,6 @@
 import { GameStats } from '@/pages/Index';
 import { achievements } from '@/data/movies';
+import { useTmdbImages } from '@/hooks/useTmdbImages';
 import Icon from '@/components/ui/icon';
 
 interface HomePageProps {
@@ -9,6 +10,7 @@ interface HomePageProps {
 
 export default function HomePage({ onStart, stats }: HomePageProps) {
   const unlockedCount = stats.unlockedAchievements.length;
+  const { movies } = useTmdbImages();
 
   return (
     <div className="min-h-screen pt-20 pb-16 px-6">
@@ -80,19 +82,12 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
       <div className="max-w-6xl mx-auto mb-16 animate-fade-in-up delay-300">
         <div className="film-strip rounded overflow-hidden" style={{ height: '180px', padding: '0 36px' }}>
           <div className="flex gap-1 h-full items-center overflow-hidden">
-            {[
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/eda56e2e-ca3e-4f5f-be85-687312c98be5.jpg',
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/74cf669e-9163-4de5-8c87-183d832bcd27.jpg',
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/6b286a3a-3532-4a5c-80ea-43dc4f16f397.jpg',
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/ec3a3a9f-7bed-49c9-b258-30ff18229e9c.jpg',
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/33a67666-7b2d-4725-98d8-92148ade1386.jpg',
-              'https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/d82d44ee-3603-4703-bd77-c8807f5a4914.jpg',
-            ].map((url, i) => (
+            {movies.slice(0, 6).map((m, i) => (
               <div key={i} className="flex-shrink-0 h-36 w-48 overflow-hidden" style={{
                 filter: 'brightness(0.6) sepia(0.2)',
                 border: '1px solid #1a1a1a',
               }}>
-                <img src={url} alt="" className="w-full h-full object-cover" />
+                <img src={m.imageUrl} alt={m.title} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>

@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get movies with TMDB images",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"movies": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
