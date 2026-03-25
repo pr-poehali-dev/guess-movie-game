@@ -33,16 +33,28 @@ async function fetchStill(tmdbId: number): Promise<string> {
   return url;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Загружаем только 10 случайных из 100 — быстро и без лишних запросов
 export function useTmdbImages() {
-  const [loadedMovies, setLoadedMovies] = useState<Movie[]>(movies);
+  const [loadedMovies, setLoadedMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      const selected = shuffle(movies).slice(0, 10);
+
       const results = await Promise.all(
-        movies.map(async (movie) => {
+        selected.map(async (movie) => {
           try {
             const url = await fetchStill(movie.tmdbId);
             return { ...movie, imageUrl: url };
@@ -51,6 +63,7 @@ export function useTmdbImages() {
           }
         })
       );
+
       if (!cancelled) {
         setLoadedMovies(results);
         setLoading(false);
@@ -62,4 +75,18 @@ export function useTmdbImages() {
   }, []);
 
   return { movies: loadedMovies, loading };
+}
+
+// Для главной страницы — 6 случайных кадров
+export function useHomeImages() {
+  const [images, setImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    const sample = shuffle(movies).slice(0, 6);
+    Promise.all(
+      sample.map(m => fetchStill(m.tmdbId).catch(() => ''))
+    ).then(urls => setImages(urls.filter(Boolean)));
+  }, []);
+
+  return images;
 }

@@ -1,6 +1,6 @@
 import { GameStats } from '@/pages/Index';
 import { achievements } from '@/data/movies';
-import { useTmdbImages } from '@/hooks/useTmdbImages';
+import { useHomeImages } from '@/hooks/useTmdbImages';
 import Icon from '@/components/ui/icon';
 
 interface HomePageProps {
@@ -10,7 +10,7 @@ interface HomePageProps {
 
 export default function HomePage({ onStart, stats }: HomePageProps) {
   const unlockedCount = stats.unlockedAchievements.length;
-  const { movies } = useTmdbImages();
+  const images = useHomeImages();
 
   return (
     <div className="min-h-screen pt-20 pb-16 px-6">
@@ -82,12 +82,12 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
       <div className="max-w-6xl mx-auto mb-16 animate-fade-in-up delay-300">
         <div className="film-strip rounded overflow-hidden" style={{ height: '180px', padding: '0 36px' }}>
           <div className="flex gap-1 h-full items-center overflow-hidden">
-            {movies.slice(0, 6).map((m, i) => (
+            {images.map((url, i) => (
               <div key={i} className="flex-shrink-0 h-36 w-48 overflow-hidden" style={{
                 filter: 'brightness(0.6) sepia(0.2)',
                 border: '1px solid #1a1a1a',
               }}>
-                <img src={m.imageUrl} alt={m.title} className="w-full h-full object-cover" />
+                <img src={url} alt="" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
