@@ -1,7 +1,7 @@
 """
-Управление кадрами фильмов в S3.
+Управление кадрами фильмов — S3 + PostgreSQL.
 GET /?movie_id=1 — список кадров фильма.
-GET /?all=1 — все кадры всех фильмов (map movie_id -> [urls]).
+GET /?all=1 — все кадры всех фильмов.
 POST / {movie_id, image_base64, filename} — загрузить кадр.
 DELETE / {movie_id, filename} — удалить кадр.
 """
@@ -9,9 +9,13 @@ import json
 import os
 import base64
 import boto3
+import psycopg2
 
 S3_ENDPOINT = "https://bucket.poehali.dev"
 BUCKET = "files"
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+AWS_KEY = os.environ.get("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 
 HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -24,50 +28,17 @@ def get_s3():
     return boto3.client(
         "s3",
         endpoint_url=S3_ENDPOINT,
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        aws_access_key_id=AWS_KEY,
+        aws_secret_access_key=AWS_SECRET,
     )
 
 
+def get_db():
+    return psycopg2.connect(DATABASE_URL)
+
+
 def cdn_url(key: str) -> str:
-    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
-
-
-def list_movie_images(s3, movie_id: int) -> list:
-    prefix = f"movies/{movie_id}/"
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
-    urls = []
-    for obj in resp.get("Contents", []):
-        k = obj["Key"]
-        if k.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-            urls.append(cdn_url(k))
-    return urls
-
-
-def list_all_images(s3) -> dict:
-    prefix = "movies/"
-    result = {}
-    continuation = None
-    while True:
-        kwargs = {"Bucket": BUCKET, "Prefix": prefix, "MaxKeys": 1000}
-        if continuation:
-            kwargs["ContinuationToken"] = continuation
-        resp = s3.list_objects_v2(**kwargs)
-        for obj in resp.get("Contents", []):
-            k = obj["Key"]
-            if not k.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                continue
-            parts = k.replace(prefix, "").split("/")
-            if len(parts) >= 2:
-                mid = parts[0]
-                if mid not in result:
-                    result[mid] = []
-                result[mid].append(cdn_url(k))
-        if resp.get("IsTruncated"):
-            continuation = resp.get("NextContinuationToken")
-        else:
-            break
-    return result
+    return f"https://cdn.poehali.dev/projects/{AWS_KEY}/bucket/{key}"
 
 
 def handler(event: dict, context) -> dict:
@@ -75,27 +46,42 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": HEADERS, "body": ""}
 
     method = event.get("httpMethod", "GET")
-    s3 = get_s3()
 
     if method == "GET":
         params = event.get("queryStringParameters") or {}
+        conn = get_db()
+        cur = conn.cursor()
 
         if params.get("all") == "1":
-            images = list_all_images(s3)
+            cur.execute("SELECT movie_id, cdn_url FROM movie_images ORDER BY movie_id, id")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            result = {}
+            for mid, url in rows:
+                mid_str = str(mid)
+                if mid_str not in result:
+                    result[mid_str] = []
+                result[mid_str].append(url)
             return {
                 "statusCode": 200,
                 "headers": HEADERS,
-                "body": json.dumps({"images": images}),
+                "body": json.dumps({"images": result}),
             }
 
         movie_id = params.get("movie_id")
         if not movie_id:
+            cur.close()
+            conn.close()
             return {
                 "statusCode": 400,
                 "headers": HEADERS,
                 "body": json.dumps({"error": "movie_id required"}),
             }
-        urls = list_movie_images(s3, int(movie_id))
+        cur.execute("SELECT cdn_url FROM movie_images WHERE movie_id = %s ORDER BY id" % int(movie_id))
+        urls = [r[0] for r in cur.fetchall()]
+        cur.close()
+        conn.close()
         return {
             "statusCode": 200,
             "headers": HEADERS,
@@ -125,13 +111,21 @@ def handler(event: dict, context) -> dict:
         }.get(ext, "image/jpeg")
 
         s3_key = f"movies/{movie_id}/{filename}"
-        s3.put_object(
-            Bucket=BUCKET,
-            Key=s3_key,
-            Body=image_data,
-            ContentType=content_type,
-        )
+        s3 = get_s3()
+        s3.put_object(Bucket=BUCKET, Key=s3_key, Body=image_data, ContentType=content_type)
+
         url = cdn_url(s3_key)
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO movie_images (movie_id, filename, cdn_url, s3_key) VALUES (%s, '%s', '%s', '%s')"
+            % (int(movie_id), filename.replace("'", "''"), url.replace("'", "''"), s3_key.replace("'", "''"))
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+
         return {
             "statusCode": 200,
             "headers": HEADERS,
@@ -148,8 +142,21 @@ def handler(event: dict, context) -> dict:
                 "headers": HEADERS,
                 "body": json.dumps({"error": "movie_id and filename required"}),
             }
+
         s3_key = f"movies/{movie_id}/{filename}"
+        s3 = get_s3()
         s3.delete_object(Bucket=BUCKET, Key=s3_key)
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM movie_images WHERE movie_id = %s AND filename = '%s'"
+            % (int(movie_id), filename.replace("'", "''"))
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+
         return {
             "statusCode": 200,
             "headers": HEADERS,

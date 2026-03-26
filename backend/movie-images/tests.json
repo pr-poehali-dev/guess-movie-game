@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/?all=1",
       "expectedStatus": 200,
-      "expectedBody": {},
+      "expectedBody": {"images": {}},
       "bodyMatcher": "partial"
     },
     {
@@ -14,6 +14,14 @@
       "path": "/?movie_id=1",
       "expectedStatus": 200,
       "expectedBody": {"movie_id": 1},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing movie_id on GET",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "movie_id required"},
       "bodyMatcher": "partial"
     }
   ]
