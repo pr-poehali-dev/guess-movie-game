@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "Get movies with TMDB images",
+      "name": "Get backdrops for movies",
       "method": "GET",
-      "path": "/",
+      "path": "/?ids=278,680,155",
       "expectedStatus": 200,
-      "expectedBody": {"movies": []},
+      "expectedBody": {"images": {}},
       "bodyMatcher": "partial"
     }
   ]
