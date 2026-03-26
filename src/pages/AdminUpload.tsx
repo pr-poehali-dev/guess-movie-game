@@ -21,15 +21,82 @@ function toBase64(blob: Blob): Promise<string> {
   });
 }
 
+function loadImageViaCanvas(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        resolve(dataUrl.split(',')[1]);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function loadImageViaProxy(url: string): Promise<string | null> {
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      resolve(dataUrl.split(',')[1]);
+    };
+    img.onerror = () => resolve(null);
+    img.src = proxyUrl;
+  });
+}
+
+function loadImageViaWeserv(url: string): Promise<string | null> {
+  const weservUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=1280&output=jpg&q=90`;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        resolve(dataUrl.split(',')[1]);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = weservUrl;
+  });
+}
+
 async function fetchImageAsBase64(url: string): Promise<string | null> {
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) return null;
-    const blob = await resp.blob();
-    return toBase64(blob);
-  } catch {
-    return null;
-  }
+  let b64 = await loadImageViaCanvas(url);
+  if (b64) return b64;
+  console.log('Direct failed, trying weserv proxy...');
+  b64 = await loadImageViaWeserv(url);
+  if (b64) return b64;
+  console.log('Weserv failed, trying corsproxy...');
+  b64 = await loadImageViaProxy(url);
+  return b64;
 }
 
 async function uploadToS3(movieId: number, base64: string, filename: string) {
@@ -78,17 +145,29 @@ export default function AdminUpload() {
       return;
     }
     setBulkProgress({ done: 0, total: missing.length, current: '' });
+    let ok = 0;
+    let fail = 0;
 
     for (let i = 0; i < missing.length; i++) {
       const m = missing[i];
-      setBulkProgress({ done: i, total: missing.length, current: m.title });
-      const b64 = await fetchImageAsBase64(m.imageUrl);
-      if (b64) {
-        await uploadToS3(m.id, b64, '1.jpg');
+      setBulkProgress({ done: i, total: missing.length, current: `${m.title} (${ok} ok, ${fail} fail)` });
+      try {
+        const b64 = await fetchImageAsBase64(m.imageUrl);
+        if (b64) {
+          await uploadToS3(m.id, b64, '1.jpg');
+          ok++;
+        } else {
+          console.error(`No image data for ${m.id} ${m.title}`);
+          fail++;
+        }
+      } catch (e) {
+        console.error(`Upload error for ${m.id} ${m.title}:`, e);
+        fail++;
       }
     }
 
     setBulkProgress(null);
+    alert(`Готово! Загружено: ${ok}, ошибок: ${fail}`);
     await loadImages();
   };
 
