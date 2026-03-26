@@ -91,6 +91,13 @@ MOVIES = [
     {"id": 58, "tmdbId": 694, "title": "Нечто"},
     {"id": 59, "tmdbId": 621, "title": "Мементо"},
     {"id": 60, "tmdbId": 496243, "title": "Паразиты"},
+    {"id": 61, "tmdbId": 399579, "title": "Олдбой"},
+    {"id": 62, "tmdbId": 120, "title": "Властелин колец: Братство кольца"},
+    {"id": 63, "tmdbId": 207, "title": "Властелин колец: Две крепости"},
+    {"id": 64, "tmdbId": 122, "title": "Властелин колец: Возвращение короля"},
+    {"id": 65, "tmdbId": 129, "title": "Унесённые призраками"},
+    {"id": 66, "tmdbId": 4935, "title": "Ходячий замок"},
+    {"id": 67, "tmdbId": 372058, "title": "Твоё имя"},
     {"id": 68, "tmdbId": 8587, "title": "Король-Лев"},
     {"id": 69, "tmdbId": 862, "title": "История игрушек"},
     {"id": 70, "tmdbId": 9806, "title": "Суперсемейка"},
@@ -107,6 +114,23 @@ MOVIES = [
     {"id": 81, "tmdbId": 346698, "title": "Барби"},
     {"id": 82, "tmdbId": 238713, "title": "Выживший"},
     {"id": 83, "tmdbId": 329, "title": "Джуманджи"},
+    {"id": 84, "tmdbId": 807, "title": "Семь"},
+    {"id": 85, "tmdbId": 1124, "title": "Престиж"},
+    {"id": 86, "tmdbId": 101, "title": "Леон"},
+    {"id": 87, "tmdbId": 37165, "title": "Шоу Трумана"},
+    {"id": 88, "tmdbId": 857, "title": "Спасти рядового Райана"},
+    {"id": 89, "tmdbId": 280, "title": "Терминатор 2: Судный день"},
+    {"id": 90, "tmdbId": 11324, "title": "Остров проклятых"},
+    {"id": 91, "tmdbId": 13223, "title": "Гран Торино"},
+    {"id": 92, "tmdbId": 348, "title": "Чужой"},
+    {"id": 93, "tmdbId": 103, "title": "Таксист"},
+    {"id": 94, "tmdbId": 77338, "title": "1+1"},
+    {"id": 95, "tmdbId": 16869, "title": "Бесславные ублюдки"},
+    {"id": 96, "tmdbId": 150540, "title": "Головоломка"},
+    {"id": 97, "tmdbId": 490132, "title": "Зелёная книга"},
+    {"id": 98, "tmdbId": 37799, "title": "Социальная сеть"},
+    {"id": 99, "tmdbId": 5915, "title": "В диких условиях"},
+    {"id": 100, "tmdbId": 18785, "title": "Мальчишник в Вегасе"},
 ]
 
 
@@ -165,14 +189,14 @@ def process_movie(movie: dict, s3, conn) -> dict:
         cur.close()
         return {"id": movie_id, "title": title, "status": "skip", "count": existing}
 
-    if existing > 0:
-        cur.execute("DELETE FROM movie_images WHERE movie_id = %s" % movie_id)
-        conn.commit()
-
     image_paths = fetch_tmdb_images(tmdb_id)
     if not image_paths:
         cur.close()
-        return {"id": movie_id, "title": title, "status": "no_images", "count": 0}
+        return {"id": movie_id, "title": title, "status": "no_images", "count": existing}
+
+    if existing > 0:
+        cur.execute("DELETE FROM movie_images WHERE movie_id = %s" % movie_id)
+        conn.commit()
 
     uploaded = 0
     for i, fp in enumerate(image_paths, 1):

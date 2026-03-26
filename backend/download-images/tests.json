@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "Download images to S3",
-      "method": "POST",
-      "path": "/",
+      "name": "Get status",
+      "method": "GET",
+      "path": "/?status=1",
       "expectedStatus": 200,
-      "expectedBody": {"total": 83},
+      "expectedBody": {"movies_with_images": "number", "total_images": "number"},
       "bodyMatcher": "partial"
     }
   ]

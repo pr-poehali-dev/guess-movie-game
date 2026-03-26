@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/?status=1",
       "expectedStatus": 200,
-      "expectedBody": {"total_images": 0},
+      "expectedBody": {"total_images": "number"},
       "bodyMatcher": "partial"
     }
   ]

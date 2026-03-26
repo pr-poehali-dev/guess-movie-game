@@ -120,6 +120,39 @@ export const movies: Movie[] = [
   // --- ПРИКЛЮЧЕНИЯ ---
   { id: 82,  tmdbId: 238713, title: "Выживший",                      year: 2015, imageUrl: `${TMDB_IMG}/prs1LzFbLfO3Y4vTTlmYSbxBNqE.jpg`, options: ["Дикая", "Выживший", "В диких условиях", "127 часов"],                                          correctIndex: 1, genre: "Приключения",  difficulty: 'medium' },
   { id: 83,  tmdbId: 329,    title: "Джуманджи",                     year: 1995, imageUrl: `${TMDB_IMG}/vfWMmZvzKMOYCaGMILLPRRlBwkK.jpg`, options: ["Зathura", "Джуманджи", "Хук", "Магия"],                                                      correctIndex: 1, genre: "Приключения",  difficulty: 'easy' },
+
+  // --- ТРИЛЛЕР ---
+  { id: 84,  tmdbId: 807,    title: "Семь",                          year: 1995, imageUrl: `${TMDB_IMG}/jDgArPKwkLI1UrSzMJfDFFjyNBd.jpg`, options: ["Молчание ягнят", "Семь", "Зодиак", "Исчезнувшая"],                                                correctIndex: 1, genre: "Триллер",      difficulty: 'hard' },
+  { id: 85,  tmdbId: 1124,   title: "Престиж",                       year: 2006, imageUrl: `${TMDB_IMG}/o5T8rZxoWSBMYwjGqmmBBCwssmu.jpg`, options: ["Начало", "Престиж", "Мементо", "Иллюзионист"],                                                    correctIndex: 1, genre: "Триллер",      difficulty: 'hard' },
+  { id: 90,  tmdbId: 11324,  title: "Остров проклятых",              year: 2010, imageUrl: `${TMDB_IMG}/jD2PlMImqMxNy3AOlUKs2AHLQGB.jpg`, options: ["Начало", "Мементо", "Остров проклятых", "Готика"],                                                 correctIndex: 2, genre: "Триллер",      difficulty: 'hard' },
+
+  // --- КРИМИНАЛ ---
+  { id: 86,  tmdbId: 101,    title: "Леон",                          year: 1994, imageUrl: `${TMDB_IMG}/d68kQdmlXPDWS44Rm7j8GoYmkKv.jpg`, options: ["Леон", "Такси", "Никита", "Перевозчик"],                                                          correctIndex: 0, genre: "Криминал",     difficulty: 'medium' },
+  { id: 95,  tmdbId: 16869,  title: "Бесславные ублюдки",           year: 2009, imageUrl: `${TMDB_IMG}/bORe0eI72D874TMIqDxVisDERoyV.jpg`, options: ["Джанго освобождённый", "Бесславные ублюдки", "Омерзительная восьмёрка", "Криминальное чтиво"],     correctIndex: 1, genre: "Криминал",     difficulty: 'medium' },
+
+  // --- ДРАМА ---
+  { id: 87,  tmdbId: 37165,  title: "Шоу Трумана",                   year: 1998, imageUrl: `${TMDB_IMG}/jHdGt2gY1bYyV2HcGWWjQ4RIQJB.jpg`, options: ["Маска", "Шоу Трумана", "Вечное сияние чистого разума", "Кабельщик"],                               correctIndex: 1, genre: "Драма",        difficulty: 'medium' },
+  { id: 91,  tmdbId: 13223,  title: "Гран Торино",                   year: 2008, imageUrl: `${TMDB_IMG}/5F9zt28uPGdNaOlGThhfTYrlBsz.jpg`, options: ["Непрощённый", "Гран Торино", "Перемена участи", "Малышка на миллион"],                              correctIndex: 1, genre: "Драма",        difficulty: 'hard' },
+  { id: 93,  tmdbId: 103,    title: "Таксист",                       year: 1976, imageUrl: `${TMDB_IMG}/cNLEnVdvhFGYnOeyiULJpVLiMBj.jpg`, options: ["Бешеный бык", "Таксист", "Крёстный отец", "Лицо со шрамом"],                                      correctIndex: 1, genre: "Драма",        difficulty: 'hard' },
+  { id: 97,  tmdbId: 490132, title: "Зелёная книга",                 year: 2018, imageUrl: `${TMDB_IMG}/kZMCbp0o36QLBm95PoTpbnRbul.jpg`,  options: ["1+1", "Зелёная книга", "Достучаться до небес", "Прислуга"],                                       correctIndex: 1, genre: "Драма",        difficulty: 'medium' },
+  { id: 98,  tmdbId: 37799,  title: "Социальная сеть",               year: 2010, imageUrl: `${TMDB_IMG}/gN5HJkmYI3DaSRiB9Oi1CsvCAcL.jpg`, options: ["Стажёр", "Социальная сеть", "Игра на понижение", "Стив Джобс"],                                    correctIndex: 1, genre: "Драма",        difficulty: 'medium' },
+
+  // --- ИСТОРИЧЕСКИЙ ---
+  { id: 88,  tmdbId: 857,    title: "Спасти рядового Райана",        year: 1998, imageUrl: `${TMDB_IMG}/bdD39MpSVhKjxarTxLSfX6baoMP.jpg`, options: ["Спасти рядового Райана", "Тонкая красная линия", "Перл-Харбор", "Дюнкерк"],                        correctIndex: 0, genre: "Исторический", difficulty: 'medium' },
+
+  // --- ФАНТАСТИКА ---
+  { id: 89,  tmdbId: 280,    title: "Терминатор 2: Судный день",     year: 1991, imageUrl: `${TMDB_IMG}/xKb6mtdfI5Qsggc44Hr9CCUDvaj.jpg`, options: ["Терминатор", "Терминатор 2", "Робокоп", "Хищник"],                                                 correctIndex: 1, genre: "Фантастика",   difficulty: 'easy' },
+  { id: 92,  tmdbId: 348,    title: "Чужой",                         year: 1979, imageUrl: `${TMDB_IMG}/AmR3JG1VQVxU8TfAvljUhfSFUOx.jpg`, options: ["Чужой", "Чужие", "Нечто", "Хищник"],                                                              correctIndex: 0, genre: "Фантастика",   difficulty: 'hard' },
+
+  // --- КОМЕДИЯ ---
+  { id: 94,  tmdbId: 77338,  title: "1+1",                           year: 2011, imageUrl: `${TMDB_IMG}/ihWaJZCUIon2dXcosjQG2JHJAPN.jpg`, options: ["1+1", "Зелёная книга", "Достучаться до небес", "Форрест Гамп"],                                    correctIndex: 0, genre: "Комедия",      difficulty: 'easy' },
+  { id: 100, tmdbId: 18785,  title: "Мальчишник в Вегасе",           year: 2009, imageUrl: `${TMDB_IMG}/gWyngEV7jHLb6qh1sWEBEJhfkb6.jpg`, options: ["Мальчишник в Вегасе", "Американский пирог", "Тупой и ещё тупее", "Евротур"],                       correctIndex: 0, genre: "Комедия",      difficulty: 'easy' },
+
+  // --- АНИМАЦИЯ ---
+  { id: 96,  tmdbId: 150540, title: "Головоломка",                   year: 2015, imageUrl: `${TMDB_IMG}/j29ekbcLpBvxnGk6LjdTc2EI5SA.jpg`, options: ["Вверх", "Головоломка", "Тайна Коко", "Душа"],                                                     correctIndex: 1, genre: "Анимация",     difficulty: 'easy' },
+
+  // --- ПРИКЛЮЧЕНИЯ ---
+  { id: 99,  tmdbId: 5915,   title: "В диких условиях",              year: 2007, imageUrl: `${TMDB_IMG}/raDhCdR5sTcTJSejYPeZk1V1KQf.jpg`, options: ["Дикая", "В диких условиях", "127 часов", "Выживший"],                                              correctIndex: 1, genre: "Приключения",  difficulty: 'hard' },
 ];
 
 export const achievements = [
