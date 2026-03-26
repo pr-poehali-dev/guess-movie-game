@@ -4,6 +4,8 @@ import funcUrls from '../../backend/func2url.json';
 import Icon from '@/components/ui/icon';
 
 const MOVIE_IMAGES_URL = funcUrls['movie-images'];
+const TMDB_API_KEY = 'e789191df94eb3e69769eb98236c09b6';
+const IMAGES_PER_MOVIE = 8;
 
 interface MovieImages {
   [movieId: string]: string[];
@@ -12,16 +14,15 @@ interface MovieImages {
 function toBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]);
-    };
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
 }
 
-function loadImageViaCanvas(url: string): Promise<string | null> {
+function downloadViaWeserv(tmdbPath: string): Promise<string | null> {
+  const originalUrl = `https://image.tmdb.org/t/p/w1280${tmdbPath}`;
+  const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(originalUrl)}&w=1280&output=jpg&q=85`;
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -33,70 +34,22 @@ function loadImageViaCanvas(url: string): Promise<string | null> {
         const ctx = canvas.getContext('2d');
         if (!ctx) { resolve(null); return; }
         ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        resolve(dataUrl.split(',')[1]);
-      } catch {
-        resolve(null);
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
-
-function loadImageViaProxy(url: string): Promise<string | null> {
-  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(null); return; }
-      ctx.drawImage(img, 0, 0);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-      resolve(dataUrl.split(',')[1]);
+        resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      } catch { resolve(null); }
     };
     img.onerror = () => resolve(null);
     img.src = proxyUrl;
   });
 }
 
-function loadImageViaWeserv(url: string): Promise<string | null> {
-  const weservUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=1280&output=jpg&q=90`;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(null); return; }
-        ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        resolve(dataUrl.split(',')[1]);
-      } catch {
-        resolve(null);
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = weservUrl;
-  });
-}
-
-async function fetchImageAsBase64(url: string): Promise<string | null> {
-  let b64 = await loadImageViaCanvas(url);
-  if (b64) return b64;
-  console.log('Direct failed, trying weserv proxy...');
-  b64 = await loadImageViaWeserv(url);
-  if (b64) return b64;
-  console.log('Weserv failed, trying corsproxy...');
-  b64 = await loadImageViaProxy(url);
-  return b64;
+async function fetchTmdbBackdrops(tmdbId: number): Promise<string[]> {
+  const url = `https://api.themoviedb.org/3/movie/${tmdbId}/images?api_key=${TMDB_API_KEY}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  const backdrops = (data.backdrops || [])
+    .sort((a: { vote_average?: number }, b: { vote_average?: number }) => (b.vote_average || 0) - (a.vote_average || 0))
+    .slice(0, IMAGES_PER_MOVIE);
+  return backdrops.map((b: { file_path: string }) => b.file_path);
 }
 
 async function uploadToS3(movieId: number, base64: string, filename: string) {
@@ -121,7 +74,12 @@ export default function AdminUpload() {
   const [allImages, setAllImages] = useState<MovieImages>({});
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<Record<number, boolean>>({});
-  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{
+    done: number; total: number; current: string;
+    ok: number; fail: number; imagesDone: number;
+  } | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const stopRef = useRef(false);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const loadImages = async (showLoader = false) => {
@@ -139,37 +97,65 @@ export default function AdminUpload() {
   useEffect(() => { loadImages(true); }, []);
 
   const handleBulkUpload = async () => {
-    const missing = movies.filter(m => !(allImages[String(m.id)]?.length > 0));
+    const missing = movies.filter(m => (allImages[String(m.id)]?.length || 0) < IMAGES_PER_MOVIE);
     if (missing.length === 0) {
-      alert('Все фильмы уже имеют кадры!');
+      alert('Все фильмы уже имеют по 8 кадров!');
       return;
     }
-    setBulkProgress({ done: 0, total: missing.length, current: '' });
+    stopRef.current = false;
+    setBulkRunning(true);
+    setBulkProgress({ done: 0, total: missing.length, current: '', ok: 0, fail: 0, imagesDone: 0 });
+
     let ok = 0;
     let fail = 0;
+    let totalImgs = 0;
 
     for (let i = 0; i < missing.length; i++) {
+      if (stopRef.current) break;
       const m = missing[i];
-      setBulkProgress({ done: i, total: missing.length, current: `${m.title} (${ok} ok, ${fail} fail)` });
+      setBulkProgress({ done: i, total: missing.length, current: m.title, ok, fail, imagesDone: totalImgs });
+
       try {
-        const b64 = await fetchImageAsBase64(m.imageUrl);
-        if (b64) {
-          await uploadToS3(m.id, b64, '1.jpg');
-          ok++;
-        } else {
-          console.error(`No image data for ${m.id} ${m.title}`);
-          fail++;
+        const paths = await fetchTmdbBackdrops(m.tmdbId);
+        if (!paths.length) { fail++; continue; }
+
+        let movieUploaded = 0;
+        for (let j = 0; j < paths.length; j++) {
+          if (stopRef.current) break;
+          setBulkProgress({
+            done: i, total: missing.length,
+            current: `${m.title} (кадр ${j + 1}/${paths.length})`,
+            ok, fail, imagesDone: totalImgs,
+          });
+
+          const b64 = await downloadViaWeserv(paths[j]);
+          if (!b64) continue;
+
+          const filename = `${j + 1}.jpg`;
+          const resp = await uploadToS3(m.id, b64, filename);
+          if (resp.url) {
+            movieUploaded++;
+            totalImgs++;
+            setAllImages(prev => ({
+              ...prev,
+              [String(m.id)]: [...(prev[String(m.id)] || []), resp.url],
+            }));
+          }
         }
+        if (movieUploaded > 0) ok++;
+        else fail++;
       } catch (e) {
-        console.error(`Upload error for ${m.id} ${m.title}:`, e);
+        console.error(`Error ${m.title}:`, e);
         fail++;
       }
     }
 
     setBulkProgress(null);
-    alert(`Готово! Загружено: ${ok}, ошибок: ${fail}`);
-    await loadImages();
+    setBulkRunning(false);
+    alert(`Готово! Фильмов обработано: ${ok}, ошибок: ${fail}, кадров загружено: ${totalImgs}`);
   };
+
+  const handleStop = () => { stopRef.current = true; };
 
   const handleFileUpload = async (movieId: number, files: FileList) => {
     setUploading(prev => ({ ...prev, [movieId]: true }));
@@ -180,7 +166,7 @@ export default function AdminUpload() {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > 5 * 1024 * 1024) {
-        alert(`${file.name} слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 5 МБ.`);
+        alert(`${file.name} слишком большой. Максимум 5 МБ.`);
         continue;
       }
       const ext = file.name.split('.').pop() || 'jpg';
@@ -196,19 +182,13 @@ export default function AdminUpload() {
             [String(movieId)]: [...(prev[String(movieId)] || []), resp.url],
           }));
           uploaded++;
-        } else if (resp.error) {
-          alert(`Ошибка: ${resp.error}`);
         }
       } catch (e) {
-        console.error('[UPLOAD] Error:', e);
+        console.error('Upload error:', e);
         alert(`Не удалось загрузить ${file.name}`);
       }
     }
-
     setUploading(prev => ({ ...prev, [movieId]: false }));
-    if (uploaded > 0) {
-      alert(`Загружено ${uploaded} из ${files.length} файлов`);
-    }
   };
 
   const handleDelete = async (movieId: number, url: string) => {
@@ -216,7 +196,10 @@ export default function AdminUpload() {
     const parts = url.split('/');
     const filename = parts[parts.length - 1];
     await deleteFromS3(movieId, filename);
-    await loadImages();
+    setAllImages(prev => ({
+      ...prev,
+      [String(movieId)]: (prev[String(movieId)] || []).filter(u => u !== url),
+    }));
   };
 
   const moviesWithCount = movies.map(m => ({
@@ -227,6 +210,7 @@ export default function AdminUpload() {
 
   const totalImages = Object.values(allImages).reduce((sum, arr) => sum + arr.length, 0);
   const moviesWithImages = Object.keys(allImages).filter(k => allImages[k].length > 0).length;
+  const moviesComplete = Object.keys(allImages).filter(k => allImages[k].length >= IMAGES_PER_MOVIE).length;
 
   if (loading) {
     return (
@@ -246,10 +230,10 @@ export default function AdminUpload() {
           <div>
             <h1 className="font-playfair text-3xl font-bold text-gold mb-2">Управление кадрами</h1>
             <p className="text-gray-400 text-sm">
-              {moviesWithImages} из {movies.length} фильмов имеют кадры | Всего {totalImages} кадров
+              {moviesComplete} из {movies.length} фильмов имеют 8+ кадров | {moviesWithImages} с кадрами | Всего {totalImages} кадров
             </p>
             <p className="text-gray-500 text-xs mt-1">
-              Перетащите файлы на карточку фильма или нажмите «Добавить кадры»
+              Нажмите «Загрузить из TMDB» для автоматической загрузки или перетащите файлы на карточку
             </p>
           </div>
           <a href="/" className="text-gray-400 hover:text-gold transition-colors">
@@ -259,11 +243,19 @@ export default function AdminUpload() {
 
         {bulkProgress && (
           <div className="mb-6 p-4 rounded bg-white/5 border border-gold/20">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="animate-spin"><Icon name="Loader" size={16} /></div>
-              <span className="text-gold text-sm">
-                Загрузка {bulkProgress.done + 1} / {bulkProgress.total}
-              </span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin"><Icon name="Loader" size={16} /></div>
+                <span className="text-gold text-sm">
+                  Фильм {bulkProgress.done + 1} / {bulkProgress.total}
+                </span>
+                <span className="text-green-400 text-xs">{bulkProgress.ok} ok</span>
+                {bulkProgress.fail > 0 && <span className="text-red-400 text-xs">{bulkProgress.fail} fail</span>}
+                <span className="text-gray-400 text-xs">{bulkProgress.imagesDone} кадров</span>
+              </div>
+              <button onClick={handleStop} className="px-3 py-1 rounded bg-red-900/30 text-red-400 text-xs hover:bg-red-900/50">
+                Стоп
+              </button>
             </div>
             <p className="text-gray-400 text-xs">{bulkProgress.current}</p>
             <div className="w-full bg-white/10 rounded h-2 mt-2">
@@ -278,15 +270,15 @@ export default function AdminUpload() {
         <div className="flex gap-3 mb-8">
           <button
             onClick={handleBulkUpload}
-            disabled={!!bulkProgress}
+            disabled={bulkRunning}
             className="btn-cinema px-6 py-3 rounded text-sm disabled:opacity-50"
           >
             <span className="flex items-center gap-2">
               <Icon name="Download" size={16} />
-              Загрузить с TMDB ({movies.length - moviesWithImages} без кадров)
+              Загрузить из TMDB ({movies.length - moviesComplete} неполных)
             </span>
           </button>
-          <button onClick={loadImages} className="px-4 py-3 rounded border border-white/10 text-sm hover:border-gold/30 transition-colors">
+          <button onClick={() => loadImages()} className="px-4 py-3 rounded border border-white/10 text-sm hover:border-gold/30 transition-colors">
             <Icon name="RefreshCw" size={16} />
           </button>
         </div>
@@ -311,8 +303,12 @@ export default function AdminUpload() {
                     <span className="text-gold text-xs font-mono">#{m.id}</span>
                     <h3 className="font-semibold truncate">{m.title}</h3>
                     <span className="text-gray-500 text-sm">({m.year})</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${m.imageCount > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {m.imageCount} кадров
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      m.imageCount >= 8 ? 'bg-green-900/30 text-green-400' :
+                      m.imageCount > 0 ? 'bg-yellow-900/30 text-yellow-400' :
+                      'bg-red-900/30 text-red-400'
+                    }`}>
+                      {m.imageCount} / 8
                     </span>
                   </div>
 
@@ -358,7 +354,7 @@ export default function AdminUpload() {
                     {uploading[m.id] ? (
                       <><Icon name="Loader" size={14} /> Загрузка...</>
                     ) : (
-                      <><Icon name="Upload" size={14} /> Добавить кадры</>
+                      <><Icon name="Upload" size={14} /> Добавить</>
                     )}
                   </button>
                 </div>
