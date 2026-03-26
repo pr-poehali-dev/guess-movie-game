@@ -172,6 +172,7 @@ export default function AdminUpload() {
   };
 
   const handleFileUpload = async (movieId: number, files: FileList) => {
+    console.log('[UPLOAD] Start upload for movie', movieId, 'files:', files.length);
     setUploading(prev => ({ ...prev, [movieId]: true }));
     const existing = allImages[String(movieId)] || [];
     let nextNum = existing.length + 1;
@@ -183,18 +184,23 @@ export default function AdminUpload() {
       nextNum++;
 
       try {
+        console.log('[UPLOAD] Converting to base64:', file.name, 'size:', file.size);
         const b64 = await toBase64(file);
+        console.log('[UPLOAD] Base64 ready, length:', b64.length, 'sending to S3...');
         const resp = await uploadToS3(movieId, b64, filename);
+        console.log('[UPLOAD] S3 response:', JSON.stringify(resp));
         if (resp.error) {
           alert(`Ошибка загрузки ${file.name}: ${resp.error}`);
         }
       } catch (e) {
-        console.error('Upload error:', e);
+        console.error('[UPLOAD] Error:', e);
         alert(`Не удалось загрузить ${file.name}. Возможно файл слишком большой (макс ~5 МБ).`);
       }
     }
 
+    console.log('[UPLOAD] Reloading images...');
     await loadImages();
+    console.log('[UPLOAD] Done, removing spinner');
     setUploading(prev => ({ ...prev, [movieId]: false }));
   };
 
