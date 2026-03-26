@@ -171,15 +171,29 @@ export default function AdminUpload() {
     await loadImages();
   };
 
-  const handleFileUpload = async (movieId: number, file: File) => {
+  const handleFileUpload = async (movieId: number, files: FileList) => {
     setUploading(prev => ({ ...prev, [movieId]: true }));
     const existing = allImages[String(movieId)] || [];
-    const nextNum = existing.length + 1;
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filename = `${nextNum}.${ext}`;
+    let nextNum = existing.length + 1;
 
-    const b64 = await toBase64(file);
-    await uploadToS3(movieId, b64, filename);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filename = `${nextNum}.${ext}`;
+      nextNum++;
+
+      try {
+        const b64 = await toBase64(file);
+        const resp = await uploadToS3(movieId, b64, filename);
+        if (resp.error) {
+          alert(`Ошибка загрузки ${file.name}: ${resp.error}`);
+        }
+      } catch (e) {
+        console.error('Upload error:', e);
+        alert(`Не удалось загрузить ${file.name}. Возможно файл слишком большой (макс ~5 МБ).`);
+      }
+    }
+
     await loadImages();
     setUploading(prev => ({ ...prev, [movieId]: false }));
   };
@@ -220,6 +234,9 @@ export default function AdminUpload() {
             <h1 className="font-playfair text-3xl font-bold text-gold mb-2">Управление кадрами</h1>
             <p className="text-gray-400 text-sm">
               {moviesWithImages} из {movies.length} фильмов имеют кадры | Всего {totalImages} кадров
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              Перетащите файлы на карточку фильма или нажмите «Добавить кадры»
             </p>
           </div>
           <a href="/" className="text-gray-400 hover:text-gold transition-colors">
@@ -263,7 +280,18 @@ export default function AdminUpload() {
 
         <div className="grid gap-4">
           {moviesWithCount.map(m => (
-            <div key={m.id} className="p-4 rounded bg-white/5 border border-white/10 hover:border-gold/20 transition-colors">
+            <div
+              key={m.id}
+              className="p-4 rounded bg-white/5 border border-white/10 hover:border-gold/20 transition-colors"
+              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-gold', 'bg-gold/5'); }}
+              onDragLeave={e => { e.currentTarget.classList.remove('border-gold', 'bg-gold/5'); }}
+              onDrop={e => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-gold', 'bg-gold/5');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleFileUpload(m.id, files);
+              }}
+            >
               <div className="flex items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -300,11 +328,12 @@ export default function AdminUpload() {
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     ref={el => { fileInputRefs.current[m.id] = el; }}
                     onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(m.id, file);
+                      const files = e.target.files;
+                      if (files && files.length > 0) handleFileUpload(m.id, files);
                       e.target.value = '';
                     }}
                   />
@@ -316,7 +345,7 @@ export default function AdminUpload() {
                     {uploading[m.id] ? (
                       <><Icon name="Loader" size={14} /> Загрузка...</>
                     ) : (
-                      <><Icon name="Upload" size={14} /> Добавить кадр</>
+                      <><Icon name="Upload" size={14} /> Добавить кадры</>
                     )}
                   </button>
                 </div>
