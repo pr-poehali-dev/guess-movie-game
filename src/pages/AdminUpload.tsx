@@ -172,36 +172,43 @@ export default function AdminUpload() {
   };
 
   const handleFileUpload = async (movieId: number, files: FileList) => {
-    console.log('[UPLOAD] Start upload for movie', movieId, 'files:', files.length);
     setUploading(prev => ({ ...prev, [movieId]: true }));
     const existing = allImages[String(movieId)] || [];
     let nextNum = existing.length + 1;
+    let uploaded = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name} слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 5 МБ.`);
+        continue;
+      }
       const ext = file.name.split('.').pop() || 'jpg';
       const filename = `${nextNum}.${ext}`;
       nextNum++;
 
       try {
-        console.log('[UPLOAD] Converting to base64:', file.name, 'size:', file.size);
         const b64 = await toBase64(file);
-        console.log('[UPLOAD] Base64 ready, length:', b64.length, 'sending to S3...');
         const resp = await uploadToS3(movieId, b64, filename);
-        console.log('[UPLOAD] S3 response:', JSON.stringify(resp));
-        if (resp.error) {
-          alert(`Ошибка загрузки ${file.name}: ${resp.error}`);
+        if (resp.url) {
+          setAllImages(prev => ({
+            ...prev,
+            [String(movieId)]: [...(prev[String(movieId)] || []), resp.url],
+          }));
+          uploaded++;
+        } else if (resp.error) {
+          alert(`Ошибка: ${resp.error}`);
         }
       } catch (e) {
         console.error('[UPLOAD] Error:', e);
-        alert(`Не удалось загрузить ${file.name}. Возможно файл слишком большой (макс ~5 МБ).`);
+        alert(`Не удалось загрузить ${file.name}`);
       }
     }
 
-    console.log('[UPLOAD] Reloading images...');
-    await loadImages();
-    console.log('[UPLOAD] Done, removing spinner');
     setUploading(prev => ({ ...prev, [movieId]: false }));
+    if (uploaded > 0) {
+      alert(`Загружено ${uploaded} из ${files.length} файлов`);
+    }
   };
 
   const handleDelete = async (movieId: number, url: string) => {
