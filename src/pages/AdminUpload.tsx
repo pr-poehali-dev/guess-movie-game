@@ -124,8 +124,8 @@ export default function AdminUpload() {
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string } | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  const loadImages = async () => {
-    setLoading(true);
+  const loadImages = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const resp = await fetch(`${MOVIE_IMAGES_URL}?all=1`);
       const data = await resp.json();
@@ -133,10 +133,10 @@ export default function AdminUpload() {
     } catch (e) {
       console.error('Failed to load images', e);
     }
-    setLoading(false);
+    if (showLoader) setLoading(false);
   };
 
-  useEffect(() => { loadImages(); }, []);
+  useEffect(() => { loadImages(true); }, []);
 
   const handleBulkUpload = async () => {
     const missing = movies.filter(m => !(allImages[String(m.id)]?.length > 0));
