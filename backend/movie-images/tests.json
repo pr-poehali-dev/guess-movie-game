@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Get all images",
+      "method": "GET",
+      "path": "/?all=1",
+      "expectedStatus": 200,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get movie images",
+      "method": "GET",
+      "path": "/?movie_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"movie_id": 1},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

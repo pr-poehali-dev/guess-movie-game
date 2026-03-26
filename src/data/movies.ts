@@ -8,6 +8,7 @@ export interface Movie {
   correctIndex: number;
   genre: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  images?: string[];
 }
 
 export const TMDB_IMG = 'https://image.tmdb.org/t/p/w1280';

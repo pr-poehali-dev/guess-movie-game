@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { movies, Movie } from '@/data/movies';
+import funcUrls from '../../backend/func2url.json';
+
+const MOVIE_IMAGES_URL = funcUrls['movie-images'];
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -10,14 +13,42 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function fetchAllImages(): Promise<Record<string, string[]>> {
+  try {
+    const resp = await fetch(`${MOVIE_IMAGES_URL}?all=1`);
+    if (!resp.ok) return {};
+    const data = await resp.json();
+    return data.images || {};
+  } catch {
+    return {};
+  }
+}
+
+function applyImages(movieList: Movie[], s3Images: Record<string, string[]>): Movie[] {
+  return movieList.map(m => {
+    const s3 = s3Images[String(m.id)] || [];
+    if (s3.length > 0) {
+      return { ...m, images: s3, imageUrl: pickRandom(s3) };
+    }
+    return m;
+  });
+}
+
 export function useTmdbImages() {
   const [loadedMovies, setLoadedMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const selected = shuffle(movies.filter(m => m.imageUrl)).slice(0, 10);
-    setLoadedMovies(selected);
-    setLoading(false);
+    fetchAllImages().then(s3Images => {
+      const withImages = applyImages(movies, s3Images);
+      const selected = shuffle(withImages.filter(m => m.imageUrl)).slice(0, 10);
+      setLoadedMovies(selected);
+      setLoading(false);
+    });
   }, []);
 
   return { movies: loadedMovies, loading };
@@ -27,8 +58,11 @@ export function useHomeImages() {
   const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
-    const sample = shuffle(movies.filter(m => m.imageUrl)).slice(0, 6);
-    setImages(sample.map(m => m.imageUrl));
+    fetchAllImages().then(s3Images => {
+      const withImages = applyImages(movies, s3Images);
+      const sample = shuffle(withImages.filter(m => m.imageUrl)).slice(0, 6);
+      setImages(sample.map(m => m.imageUrl));
+    });
   }, []);
 
   return images;
