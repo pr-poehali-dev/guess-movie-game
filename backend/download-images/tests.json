@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Download images to S3",
+      "method": "POST",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"total": 83},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
