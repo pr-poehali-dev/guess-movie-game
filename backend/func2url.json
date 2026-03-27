@@ -1,7 +1,3 @@
 {
-  "game-room": "https://functions.poehali.dev/7fa39738-562c-417d-a3c3-0822e2f22935",
-  "bulk-upload": "https://functions.poehali.dev/12dc13ee-0335-4372-9547-bf18bd22ad72",
-  "movie-images": "https://functions.poehali.dev/f656693c-8d06-4257-8e52-04931b19579a",
-  "download-images": "https://functions.poehali.dev/5936fdcd-27aa-4a46-975b-8b28461e0351",
-  "tmdb-images": "https://functions.poehali.dev/84f15aed-1b9e-4964-bb91-60ef63e23a77"
+  "game-room": "https://functions.poehali.dev/7fa39738-562c-417d-a3c3-0822e2f22935"
 }
