@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS game_rooms (
+    id CHAR(6) PRIMARY KEY,
+    player1_id VARCHAR(16) NOT NULL,
+    player1_name VARCHAR(255) NOT NULL,
+    player2_id VARCHAR(16),
+    player2_name VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'waiting',
+    current_question INTEGER NOT NULL DEFAULT 0,
+    questions_data TEXT NOT NULL,
+    player1_answers TEXT,
+    player2_answers TEXT,
+    player1_lives INTEGER NOT NULL DEFAULT 3,
+    player2_lives INTEGER NOT NULL DEFAULT 3,
+    player1_score INTEGER NOT NULL DEFAULT 0,
+    player2_score INTEGER NOT NULL DEFAULT 0,
+    question_started_at TIMESTAMP WITH TIME ZONE,
+    winner VARCHAR(20),
+    movie_ids TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
