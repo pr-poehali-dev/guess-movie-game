@@ -17,6 +17,8 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const lastQuestionRef = useRef(-1);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
+  const prevImageRef = useRef<string | null>(null);
+  const answerSentRef = useRef(false);
 
   useEffect(() => {
     if (roomState.current_question !== lastQuestionRef.current) {
@@ -32,10 +34,14 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         resultTimerRef.current = setTimeout(() => {
           setShowResult(false);
           setSelectedAnswer(null);
+          answerSentRef.current = false;
+          prevImageRef.current = null;
           setImageLoaded(false);
         }, 2000);
       } else {
         setSelectedAnswer(null);
+        answerSentRef.current = false;
+        prevImageRef.current = null;
         setImageLoaded(false);
         setShowResult(false);
       }
@@ -44,13 +50,23 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   }, [roomState.current_question, roomState.last_result, roomState.my_player]);
 
   useEffect(() => {
+    if (roomState.question?.image_url && roomState.question.image_url === prevImageRef.current) {
+      setImageLoaded(true);
+    }
+    if (roomState.question?.image_url) {
+      prevImageRef.current = roomState.question.image_url;
+    }
+  }, [roomState.question?.image_url]);
+
+  useEffect(() => {
     return () => {
       if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
     };
   }, []);
 
   const handleAnswer = (index: number) => {
-    if (selectedAnswer !== null || roomState.i_answered || showResult) return;
+    if (selectedAnswer !== null || answerSentRef.current || showResult) return;
+    answerSentRef.current = true;
     setSelectedAnswer(index);
     onAnswer(index);
   };
@@ -326,7 +342,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           </div>
 
           {/* Answered overlay */}
-          {(roomState.i_answered || selectedAnswer !== null) && !showResult && (
+          {(answerSentRef.current || selectedAnswer !== null) && !showResult && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
               <div className="text-center">
                 <Icon name="Clock" size={32} className="text-gold mx-auto mb-2" />
@@ -349,7 +365,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         {question.options.map((option, idx) => {
           const letters = ['A', 'B', 'C', 'D'];
           const isSelected = selectedAnswer === idx;
-          const isAnswered = roomState.i_answered || selectedAnswer !== null;
+          const isAnswered = answerSentRef.current || selectedAnswer !== null;
           const showResultColor = showResult && lastResult;
           const isCorrectAnswer = showResultColor && idx === lastResult.correct_index;
           const isMyWrong = showResultColor && idx === myLastAnswer && !myLastCorrect;
