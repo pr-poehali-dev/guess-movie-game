@@ -58,8 +58,8 @@ def create_room(body):
     cur = conn.cursor()
     cur.execute(
         f"""INSERT INTO {SCHEMA}.game_rooms
-        (id, player1_id, player1_name, status, questions_data, current_question)
-        VALUES (%s, %s, %s, 'waiting', %s, 0)""",
+        (id, player1_id, player1_name, status, questions_data, current_question, movie_ids)
+        VALUES (%s, %s, %s, 'waiting', %s, 0, '')""",
         (room_id, player_id, player_name, questions_json)
     )
     conn.commit()
