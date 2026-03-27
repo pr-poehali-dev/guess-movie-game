@@ -145,11 +145,12 @@ def get_room_state(room_id, player_id):
         player1_lives, player2_lives, player1_score, player2_score,
         player1_answers, player2_answers, question_started_at, winner,
         created_at
-        FROM {SCHEMA}.game_rooms WHERE id = %s""",
+        FROM {SCHEMA}.game_rooms WHERE id = %s FOR UPDATE""",
         (room_id,)
     )
     row = cur.fetchone()
     if not row:
+        conn.commit()
         cur.close()
         conn.close()
         return resp(404, {'error': 'Комната не найдена'})
@@ -187,16 +188,25 @@ def get_room_state(room_id, player_id):
         time_left = TIME_PER_QUESTION
         elapsed = 0
 
-    # Reload answers after processing
+    p1_ans = json.loads(p1_answers) if p1_answers else []
+    p2_ans = json.loads(p2_answers) if p2_answers else []
     cur.execute(
-        f"SELECT player1_answers, player2_answers FROM {SCHEMA}.game_rooms WHERE id = %s",
+        f"SELECT player1_answers, player2_answers, current_question, player1_lives, player2_lives, player1_score, player2_score, status, winner FROM {SCHEMA}.game_rooms WHERE id = %s",
         (room_id,)
     )
-    ans_row = cur.fetchone()
-    if ans_row:
-        p1_ans = json.loads(ans_row[0]) if ans_row[0] else []
-        p2_ans = json.loads(ans_row[1]) if ans_row[1] else []
+    fresh = cur.fetchone()
+    if fresh:
+        p1_ans = json.loads(fresh[0]) if fresh[0] else []
+        p2_ans = json.loads(fresh[1]) if fresh[1] else []
+        cur_q = fresh[2]
+        p1_lives = fresh[3]
+        p2_lives = fresh[4]
+        p1_score = fresh[5]
+        p2_score = fresh[6]
+        status = fresh[7]
+        winner = fresh[8]
 
+    conn.commit()
     cur.close()
     conn.close()
 
