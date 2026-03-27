@@ -147,6 +147,10 @@ export function useMultiplayer() {
     setLoading(true);
     setError(null);
     try {
+      if (!API_URL) {
+        setError('Сервер недоступен, попробуйте позже');
+        return null;
+      }
       const questions = await prepareQuestions();
       const playerName = localStorage.getItem('kinovikto_name') || 'Игрок 1';
 

@@ -15,7 +15,10 @@ export default function LobbyPage({ onCreateRoom, onJoinRoom, onBack, loading, e
 
   const handleCreate = async () => {
     setMode('create');
-    await onCreateRoom();
+    const result = await onCreateRoom();
+    if (!result) {
+      setMode('choose');
+    }
   };
 
   const handleJoin = async () => {
