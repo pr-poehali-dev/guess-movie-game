@@ -171,7 +171,7 @@ def get_room_state(room_id, player_id):
         time_left = max(0, TIME_PER_QUESTION - elapsed)
 
         both_answered = len(p1_ans) > cur_q and len(p2_ans) > cur_q
-        time_expired = time_left <= 0
+        time_expired = elapsed > TIME_PER_QUESTION + 3
 
         if both_answered or time_expired:
             p1_lives, p2_lives, p1_score, p2_score, status, winner, cur_q, q_started = process_question(
@@ -346,9 +346,14 @@ def submit_answer(body, player_id):
     """Отправить ответ на текущий вопрос"""
     room_id = body.get('room_id', '').upper().strip()
     answer = body.get('answer')
+    body_player_id = body.get('player_id', '')
+    effective_player_id = player_id or body_player_id
 
     if answer is None or not room_id:
         return resp(400, {'error': 'Укажите room_id и answer'})
+
+    if not effective_player_id:
+        return resp(400, {'error': 'Не указан player_id'})
 
     conn = get_conn()
     cur = conn.cursor()
@@ -356,7 +361,7 @@ def submit_answer(body, player_id):
     cur.execute(
         f"""SELECT player1_id, player2_id, status, current_question,
         player1_answers, player2_answers, question_started_at
-        FROM {SCHEMA}.game_rooms WHERE id = %s""",
+        FROM {SCHEMA}.game_rooms WHERE id = %s FOR UPDATE""",
         (room_id,)
     )
     row = cur.fetchone()
@@ -372,8 +377,8 @@ def submit_answer(body, player_id):
         conn.close()
         return resp(400, {'error': 'Игра не активна'})
 
-    is_p1 = player_id == p1_id
-    is_p2 = player_id == p2_id
+    is_p1 = effective_player_id == p1_id
+    is_p2 = effective_player_id == p2_id
 
     if not is_p1 and not is_p2:
         cur.close()
@@ -393,10 +398,9 @@ def submit_answer(body, player_id):
         conn.close()
         return resp(400, {'error': 'Вы уже ответили на этот вопрос'})
 
-    # Check time
     if q_started:
         elapsed = (datetime.utcnow() - q_started).total_seconds()
-        if elapsed > TIME_PER_QUESTION + 2:
+        if elapsed > TIME_PER_QUESTION + 5:
             answer = -1
 
     if is_p1:
@@ -438,7 +442,8 @@ def handler(event, context):
 
     if method == 'GET':
         room_id = params.get('room_id', '')
-        return get_room_state(room_id, player_id)
+        effective_pid = player_id or params.get('player_id', '')
+        return get_room_state(room_id, effective_pid)
 
     if method == 'POST':
         raw_body = event.get('body', '{}') or '{}'

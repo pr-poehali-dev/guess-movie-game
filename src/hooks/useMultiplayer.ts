@@ -117,7 +117,7 @@ export function useMultiplayer() {
 
   const pollRoom = useCallback(async (rid: string) => {
     try {
-      const resp = await fetch(`${API_URL}?room_id=${rid}`, {
+      const resp = await fetch(`${API_URL}?room_id=${rid}&player_id=${playerIdRef.current}`, {
         headers: { 'X-Player-Id': playerIdRef.current },
       });
       if (!resp.ok) {
@@ -219,6 +219,7 @@ export function useMultiplayer() {
           action: 'answer',
           room_id: roomId,
           answer,
+          player_id: playerIdRef.current,
         }),
       });
       if (roomId) {
