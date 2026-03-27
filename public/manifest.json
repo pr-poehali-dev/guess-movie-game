@@ -11,16 +11,28 @@
   "categories": ["games", "entertainment"],
   "icons": [
     {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/6dc305b5-f839-4519-b68f-a22b218fd17c.jpg",
+      "src": "/icon-512.svg",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ],
   "prefer_related_applications": false
