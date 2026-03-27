@@ -188,5 +188,34 @@ export default function LobbyPage({ onCreateRoom, onJoinRoom, onBack, loading, e
     );
   }
 
-  return null;
+  return (
+    <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
+      <div className="max-w-md w-full text-center animate-fade-in">
+        <div className="text-5xl mb-6 animate-pulse">🎬</div>
+        <h2 className="font-playfair text-2xl font-bold text-gradient-gold mb-3">
+          Создаём комнату...
+        </h2>
+        <p className="text-gray-500 font-oswald font-light text-sm mb-6">
+          Подбираем кадры для викторины
+        </p>
+        <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto" />
+
+        {error && (
+          <div className="mt-6 p-3 rounded text-center text-sm font-oswald" style={{
+            background: 'rgba(229,62,62,0.1)',
+            border: '1px solid rgba(229,62,62,0.3)',
+            color: '#e53e3e',
+          }}>
+            {error}
+            <button
+              onClick={() => setMode('choose')}
+              className="block mx-auto mt-3 text-gray-400 hover:text-gold transition-colors"
+            >
+              Назад
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
