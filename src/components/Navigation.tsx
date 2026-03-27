@@ -9,7 +9,7 @@ interface NavigationProps {
 
 const navItems: { id: Page; label: string; icon: string }[] = [
   { id: 'home', label: 'Главная', icon: 'Home' },
-  { id: 'game', label: 'Игра', icon: 'Play' },
+  { id: 'mode-select', label: 'Игра', icon: 'Play' },
   { id: 'leaderboard', label: 'Рейтинг', icon: 'Trophy' },
   { id: 'settings', label: 'Настройки', icon: 'Settings' },
 ];
@@ -45,7 +45,7 @@ export default function Navigation({ currentPage, onNavigate, stats }: Navigatio
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
+              className={`nav-item ${currentPage === item.id || (item.id === 'mode-select' && currentPage === 'game') ? 'active' : ''}`}
             >
               {item.label}
             </button>
@@ -70,7 +70,7 @@ export default function Navigation({ currentPage, onNavigate, stats }: Navigatio
             key={item.id}
             onClick={() => onNavigate(item.id)}
             className={`flex-1 flex flex-col items-center gap-1 py-2 text-[10px] uppercase tracking-wider transition-all ${
-              currentPage === item.id ? 'text-gold' : 'text-gray-600'
+              currentPage === item.id || (item.id === 'mode-select' && currentPage === 'game') ? 'text-gold' : 'text-gray-600'
             }`}
           >
             <Icon name={item.icon} size={16} />

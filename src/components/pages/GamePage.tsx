@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { achievements } from '@/data/movies';
-import { useTmdbImages } from '@/hooks/useTmdbImages';
+import { Movie, achievements } from '@/data/movies';
+import { useRoundBasedImages } from '@/hooks/useTmdbImages';
 import { GameStats } from '@/pages/Index';
 import Icon from '@/components/ui/icon';
 
@@ -9,23 +9,18 @@ interface GamePageProps {
   stats: GameStats;
 }
 
-type GameState = 'playing' | 'answered' | 'gameover' | 'finished';
+type GameState = 'playing' | 'answered' | 'gameover' | 'round-complete';
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+const QUESTIONS_PER_ROUND = 10;
 
 export default function GamePage({ onFinish, stats }: GamePageProps) {
-  const { movies, loading: moviesLoading } = useTmdbImages();
-  const [queue, setQueue] = useState<typeof movies>([]);
+  const { loading: moviesLoading, getNewBatch, resetUsed } = useRoundBasedImages();
+  const [queue, setQueue] = useState<Movie[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lives, setLives] = useState(3);
-  const [score, setScore] = useState(0);
+  const [round, setRound] = useState(1);
+  const [roundScore, setRoundScore] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
   const [gameState, setGameState] = useState<GameState>('playing');
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -33,20 +28,23 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
   const [newAchievements, setNewAchievements] = useState<string[]>([]);
   const [showAchievement, setShowAchievement] = useState<string | null>(null);
   const [lostLives, setLostLives] = useState(0);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (!moviesLoading) {
-      setQueue(shuffle(movies).slice(0, 10));
+    if (!moviesLoading && !initialized) {
+      const batch = getNewBatch(QUESTIONS_PER_ROUND);
+      setQueue(batch);
+      setInitialized(true);
     }
-  }, [moviesLoading]);
+  }, [moviesLoading, initialized, getNewBatch]);
 
   const current = queue[currentIndex];
 
-  const checkAchievements = useCallback((newScore: number, perfect: boolean, prevUnlocked: string[]) => {
+  const checkAchievements = useCallback((score: number, perfect: boolean, prevUnlocked: string[]) => {
     const earned: string[] = [];
     for (const ach of achievements) {
       if (prevUnlocked.includes(ach.id)) continue;
-      if (ach.type === 'score' && newScore >= ach.requirement) earned.push(ach.id);
+      if (ach.type === 'score' && score >= ach.requirement) earned.push(ach.id);
       if (ach.type === 'perfect' && perfect) earned.push(ach.id);
     }
     return earned;
@@ -58,9 +56,11 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
     setGameState('answered');
 
     if (index === current.correctIndex) {
-      const newScore = score + 1;
-      setScore(newScore);
-      const earned = checkAchievements(newScore, lostLives === 0, stats.unlockedAchievements);
+      const newRoundScore = roundScore + 1;
+      const newTotal = totalScore + 1;
+      setRoundScore(newRoundScore);
+      setTotalScore(newTotal);
+      const earned = checkAchievements(newTotal, lostLives === 0, stats.unlockedAchievements);
       if (earned.length > 0) {
         setNewAchievements(prev => [...prev, ...earned]);
         const achData = achievements.find(a => a.id === earned[0]);
@@ -81,7 +81,7 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
 
     setTimeout(() => {
       if (currentIndex + 1 >= queue.length) {
-        setGameState('finished');
+        setGameState('round-complete');
       } else {
         setCurrentIndex(prev => prev + 1);
         setSelectedAnswer(null);
@@ -91,18 +91,33 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
     }, 1500);
   };
 
+  const handleNextRound = () => {
+    const batch = getNewBatch(QUESTIONS_PER_ROUND);
+    setQueue(batch);
+    setCurrentIndex(0);
+    setRound(prev => prev + 1);
+    setRoundScore(0);
+    setSelectedAnswer(null);
+    setGameState('playing');
+    setImageLoaded(false);
+  };
+
   const handleFinish = () => {
-    const perfect = lostLives === 0 && score > 0;
-    const earned = checkAchievements(score, perfect, stats.unlockedAchievements);
+    const perfect = lostLives === 0 && totalScore > 0;
+    const earned = checkAchievements(totalScore, perfect, stats.unlockedAchievements);
     const allEarned = [...new Set([...newAchievements, ...earned])];
-    onFinish(score, perfect, allEarned);
+    onFinish(totalScore, perfect, allEarned);
   };
 
   const handleRestart = () => {
-    setQueue(shuffle(movies).slice(0, 10));
+    resetUsed();
+    const batch = getNewBatch(QUESTIONS_PER_ROUND);
+    setQueue(batch);
     setCurrentIndex(0);
     setLives(3);
-    setScore(0);
+    setRound(1);
+    setRoundScore(0);
+    setTotalScore(0);
     setGameState('playing');
     setSelectedAnswer(null);
     setImageLoaded(false);
@@ -123,37 +138,111 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
     );
   }
 
-  if (gameState === 'gameover' || gameState === 'finished') {
-    const isWin = gameState === 'finished';
+  if (gameState === 'round-complete') {
     return (
       <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
         <div className="max-w-md w-full text-center animate-scale-in">
-          <div className="text-6xl mb-6">{isWin ? '🏆' : '💀'}</div>
-          <h2 className="font-playfair text-4xl font-bold mb-2" style={{
-            color: isWin ? '#d4a843' : '#e53e3e',
-          }}>
-            {isWin ? 'Раунд завершён!' : 'Игра окончена'}
+          <div className="text-6xl mb-6">🎉</div>
+          <div className="mb-2">
+            <span className="text-gold text-xs uppercase tracking-[0.3em] font-oswald">Раунд {round}</span>
+          </div>
+          <h2 className="font-playfair text-4xl font-bold text-gold mb-2">
+            Раунд пройден!
           </h2>
           <p className="text-gray-500 mb-8 font-oswald font-light">
-            {isWin ? 'Ты прошёл все вопросы!' : 'Ты потерял все жизни'}
+            Отличная работа! Готов к следующему?
           </p>
 
           <div className="card-cinema rounded p-8 mb-8">
-            <div className="text-7xl font-playfair font-black text-gold mb-2">{score}</div>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div>
+                <div className="text-gold font-playfair font-bold text-3xl">{roundScore}</div>
+                <div className="text-gray-600 text-xs uppercase tracking-wider">за раунд</div>
+              </div>
+              <div>
+                <div className="text-white font-playfair font-bold text-3xl">{totalScore}</div>
+                <div className="text-gray-600 text-xs uppercase tracking-wider">всего очков</div>
+              </div>
+              <div>
+                <div className="flex items-center justify-center gap-1">
+                  {[1,2,3].map(i => (
+                    <span key={i} className="text-lg" style={{
+                      filter: i <= lives ? 'none' : 'grayscale(1) opacity(0.2)',
+                    }}>❤️</span>
+                  ))}
+                </div>
+                <div className="text-gray-600 text-xs uppercase tracking-wider mt-1">жизни</div>
+              </div>
+            </div>
+            {totalScore > stats.bestScore && totalScore > 0 && (
+              <div className="text-gold text-sm font-oswald mb-2 flex items-center justify-center gap-2">
+                <Icon name="TrendingUp" size={16} /> Новый рекорд!
+              </div>
+            )}
+          </div>
+
+          {newAchievements.length > 0 && (
+            <div className="mb-6">
+              <p className="text-gold text-sm mb-3 uppercase tracking-wider">Новые достижения</p>
+              {newAchievements.map(id => {
+                const ach = achievements.find(a => a.id === id);
+                return ach ? (
+                  <div key={id} className="achievement-badge unlocked p-3 rounded flex items-center gap-3 mb-2">
+                    <span className="text-xl">{ach.icon}</span>
+                    <div className="text-left">
+                      <div className="text-gold text-sm font-semibold">{ach.title}</div>
+                      <div className="text-gray-500 text-xs">{ach.description}</div>
+                    </div>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={handleNextRound} className="btn-cinema flex-1 py-3 rounded-sm text-sm animate-gold-pulse">
+              <span className="flex items-center justify-center gap-2">
+                <Icon name="ArrowRight" size={16} />
+                Раунд {round + 1}
+              </span>
+            </button>
+            <button onClick={handleFinish} className="flex-1 py-3 rounded-sm text-sm border border-white/10 text-gray-400 hover:border-gold/30 hover:text-gold transition-all font-oswald tracking-wider">
+              В меню
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState === 'gameover') {
+    return (
+      <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
+        <div className="max-w-md w-full text-center animate-scale-in">
+          <div className="text-6xl mb-6">💀</div>
+          <h2 className="font-playfair text-4xl font-bold mb-2" style={{ color: '#e53e3e' }}>
+            Игра окончена
+          </h2>
+          <p className="text-gray-500 mb-8 font-oswald font-light">
+            Ты потерял все жизни
+          </p>
+
+          <div className="card-cinema rounded p-8 mb-8">
+            <div className="text-7xl font-playfair font-black text-gold mb-2">{totalScore}</div>
             <div className="text-gray-500 text-sm uppercase tracking-widest mb-6">очков набрано</div>
-            {score > stats.bestScore && score > 0 && (
+            {totalScore > stats.bestScore && totalScore > 0 && (
               <div className="text-gold text-sm font-oswald mb-4 flex items-center justify-center gap-2">
                 <Icon name="TrendingUp" size={16} /> Новый рекорд!
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-white font-bold text-xl">{queue.length - currentIndex === 0 ? queue.length : currentIndex}</div>
-                <div className="text-gray-600 text-xs uppercase tracking-wider">вопросов</div>
+                <div className="text-white font-bold text-xl">{round}</div>
+                <div className="text-gray-600 text-xs uppercase tracking-wider">{round === 1 ? 'раунд' : round < 5 ? 'раунда' : 'раундов'}</div>
               </div>
               <div>
-                <div className="text-white font-bold text-xl">{lives}</div>
-                <div className="text-gray-600 text-xs uppercase tracking-wider">жизней осталось</div>
+                <div className="text-white font-bold text-xl">{round * QUESTIONS_PER_ROUND - (QUESTIONS_PER_ROUND - currentIndex - 1)}</div>
+                <div className="text-gray-600 text-xs uppercase tracking-wider">вопросов</div>
               </div>
             </div>
           </div>
@@ -192,7 +281,6 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
   return (
     <div className="min-h-screen pt-20 pb-16 px-6">
       <div className="max-w-3xl mx-auto">
-        {/* Achievement popup */}
         {showAchievement && (
           <div className="fixed top-20 right-6 z-50 animate-slide-in-right achievement-badge unlocked px-4 py-3 rounded flex items-center gap-3">
             <span>🏅</span>
@@ -203,9 +291,7 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
           </div>
         )}
 
-        {/* Top bar */}
         <div className="py-6 flex items-center justify-between">
-          {/* Lives */}
           <div className="flex items-center gap-2">
             {[1,2,3].map(i => (
               <span key={i} className="text-xl transition-all" style={{
@@ -217,27 +303,32 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
             ))}
           </div>
 
-          {/* Question counter */}
-          <div className="text-gray-500 text-sm font-oswald tracking-wider">
-            <span className="text-white">{currentIndex + 1}</span> / {queue.length}
+          <div className="flex items-center gap-4">
+            <div className="px-2 py-1 rounded-sm text-[10px] uppercase tracking-wider font-oswald" style={{
+              background: 'rgba(212,168,67,0.1)',
+              border: '1px solid rgba(212,168,67,0.2)',
+              color: '#d4a843',
+            }}>
+              Раунд {round}
+            </div>
+            <div className="text-gray-500 text-sm font-oswald tracking-wider">
+              <span className="text-white">{currentIndex + 1}</span> / {queue.length}
+            </div>
           </div>
 
-          {/* Score */}
           <div className="flex items-center gap-2 px-3 py-1 rounded" style={{
             background: 'rgba(212,168,67,0.1)',
             border: '1px solid rgba(212,168,67,0.25)',
           }}>
             <Icon name="Star" size={14} className="text-gold" />
-            <span className="text-gold font-bold font-oswald">{score}</span>
+            <span className="text-gold font-bold font-oswald">{totalScore}</span>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="progress-cinema mb-6 rounded-full overflow-hidden">
           <div className="progress-cinema-fill rounded-full" style={{ width: `${progress}%` }} />
         </div>
 
-        {/* Movie frame */}
         <div className={`film-strip rounded-sm overflow-hidden mb-6 ${shakeCard ? 'animate-shake' : ''}`} style={{
           aspectRatio: '16/9',
           position: 'relative',
@@ -250,7 +341,7 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
             </div>
           )}
           <img
-            key={current.id}
+            key={current.id + '-' + round}
             src={current.imageUrl}
             alt="Угадай фильм"
             className="w-full h-full object-cover animate-fade-in"
@@ -261,11 +352,9 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
             }}
             onLoad={() => setImageLoaded(true)}
           />
-          {/* Film overlay */}
           <div className="absolute inset-0 pointer-events-none" style={{
             background: 'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4) 100%)',
           }} />
-          {/* Difficulty badge */}
           <div className="absolute top-4 right-10 px-2 py-1 rounded-sm text-[10px] uppercase tracking-wider font-oswald" style={{
             background: current.difficulty === 'easy' ? 'rgba(34,197,94,0.2)' : current.difficulty === 'medium' ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)',
             color: current.difficulty === 'easy' ? '#4ade80' : current.difficulty === 'medium' ? '#facc15' : '#f87171',
@@ -282,12 +371,10 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
           </div>
         </div>
 
-        {/* Question */}
         <p className="text-center text-gray-400 text-sm uppercase tracking-[0.3em] font-oswald mb-6">
           Что это за фильм?
         </p>
 
-        {/* Answers */}
         <div className="grid grid-cols-1 gap-3">
           {current.options.map((option, i) => {
             let className = 'btn-answer';

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import HomePage from '@/components/pages/HomePage';
+import ModeSelectPage from '@/components/pages/ModeSelectPage';
 import GamePage from '@/components/pages/GamePage';
 import LeaderboardPage from '@/components/pages/LeaderboardPage';
 import SettingsPage from '@/components/pages/SettingsPage';
 import Navigation from '@/components/Navigation';
 
-export type Page = 'home' | 'game' | 'leaderboard' | 'settings';
+export type Page = 'home' | 'mode-select' | 'game' | 'leaderboard' | 'settings';
 
 export interface GameStats {
   totalScore: number;
@@ -75,7 +76,11 @@ export default function Index() {
         return updated;
       });
     }
+
+    setPage('home');
   };
+
+  const navPage = page === 'mode-select' ? 'home' : page;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative" style={{ fontFamily: 'Oswald, sans-serif' }}>
@@ -84,9 +89,10 @@ export default function Index() {
         background: 'linear-gradient(90deg, transparent, #d4a843 20%, #f0c050 50%, #d4a843 80%, transparent)',
         boxShadow: '0 0 10px rgba(212,168,67,0.5)',
       }} />
-      <Navigation currentPage={page} onNavigate={setPage} stats={stats} />
+      <Navigation currentPage={navPage} onNavigate={setPage} stats={stats} />
       <main className="relative z-10">
-        {page === 'home' && <HomePage onStart={() => setPage('game')} stats={stats} />}
+        {page === 'home' && <HomePage onStart={() => setPage('mode-select')} stats={stats} />}
+        {page === 'mode-select' && <ModeSelectPage onSelectSolo={() => setPage('game')} />}
         {page === 'game' && <GamePage onFinish={updateStats} stats={stats} />}
         {page === 'leaderboard' && <LeaderboardPage leaderboard={leaderboard} stats={stats} />}
         {page === 'settings' && <SettingsPage stats={stats} onResetStats={() => setStats(defaultStats)} />}

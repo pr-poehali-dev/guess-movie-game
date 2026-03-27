@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { movies, Movie } from '@/data/movies';
 import funcUrls from '../../backend/func2url.json';
 
@@ -52,6 +52,43 @@ export function useTmdbImages() {
   }, []);
 
   return { movies: loadedMovies, loading };
+}
+
+export function useRoundBasedImages() {
+  const [allMovies, setAllMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
+  const usedIdsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    fetchAllImages().then(s3Images => {
+      const withImages = applyImages(movies, s3Images).filter(m => m.imageUrl);
+      setAllMovies(withImages);
+      setLoading(false);
+    });
+  }, []);
+
+  const getNewBatch = useCallback((count = 10): Movie[] => {
+    let available = allMovies.filter(m => !usedIdsRef.current.has(m.id));
+    if (available.length < count) {
+      usedIdsRef.current.clear();
+      available = [...allMovies];
+    }
+    const batch = shuffle(available).slice(0, count).map(m => {
+      const s3 = m.images || [];
+      if (s3.length > 0) {
+        return { ...m, imageUrl: pickRandom(s3) };
+      }
+      return m;
+    });
+    batch.forEach(m => usedIdsRef.current.add(m.id));
+    return batch;
+  }, [allMovies]);
+
+  const resetUsed = useCallback(() => {
+    usedIdsRef.current.clear();
+  }, []);
+
+  return { loading, getNewBatch, resetUsed };
 }
 
 export function useHomeImages() {
