@@ -1,0 +1,53 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET without room_id returns error",
+      "method": "GET",
+      "path": "/?room_id=",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET non-existent room",
+      "method": "GET",
+      "path": "/?room_id=ZZZZZZ",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST create room without questions",
+      "method": "POST",
+      "path": "/",
+      "body": "{\"action\": \"create\", \"player_name\": \"Test\", \"questions\": []}",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST join non-existent room",
+      "method": "POST",
+      "path": "/",
+      "body": "{\"action\": \"join\", \"room_id\": \"ZZZZZZ\", \"player_name\": \"Test2\"}",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST unknown action",
+      "method": "POST",
+      "path": "/",
+      "body": "{\"action\": \"unknown\"}",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

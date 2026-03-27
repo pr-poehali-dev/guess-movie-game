@@ -1,13 +1,15 @@
-import { Page, GameStats } from '@/pages/Index';
+import { GameStats } from '@/pages/Index';
 import Icon from '@/components/ui/icon';
 
+type NavPage = 'home' | 'mode-select' | 'leaderboard' | 'settings';
+
 interface NavigationProps {
-  currentPage: Page;
-  onNavigate: (page: Page) => void;
+  currentPage: string;
+  onNavigate: (page: string) => void;
   stats: GameStats;
 }
 
-const navItems: { id: Page; label: string; icon: string }[] = [
+const navItems: { id: NavPage; label: string; icon: string }[] = [
   { id: 'home', label: 'Главная', icon: 'Home' },
   { id: 'mode-select', label: 'Игра', icon: 'Play' },
   { id: 'leaderboard', label: 'Рейтинг', icon: 'Trophy' },
@@ -15,6 +17,8 @@ const navItems: { id: Page; label: string; icon: string }[] = [
 ];
 
 export default function Navigation({ currentPage, onNavigate, stats }: NavigationProps) {
+  const isGameActive = ['mode-select', 'game', 'lobby', 'multiplayer'].includes(currentPage);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-40 animate-fade-in" style={{
       background: 'linear-gradient(to bottom, rgba(10,10,10,0.98) 0%, rgba(10,10,10,0.85) 100%)',
@@ -22,7 +26,6 @@ export default function Navigation({ currentPage, onNavigate, stats }: Navigatio
       backdropFilter: 'blur(10px)',
     }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('home')}>
           <div className="w-8 h-8 flex items-center justify-center rounded" style={{
             background: 'linear-gradient(135deg, #d4a843, #9a7830)',
@@ -39,20 +42,20 @@ export default function Navigation({ currentPage, onNavigate, stats }: Navigatio
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="hidden md:flex items-center gap-8">
           {navItems.map(item => (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`nav-item ${currentPage === item.id || (item.id === 'mode-select' && currentPage === 'game') ? 'active' : ''}`}
+              className={`nav-item ${
+                currentPage === item.id || (item.id === 'mode-select' && isGameActive) ? 'active' : ''
+              }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
 
-        {/* Score badge */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded" style={{
           background: 'rgba(212,168,67,0.08)',
           border: '1px solid rgba(212,168,67,0.2)',
@@ -63,14 +66,13 @@ export default function Navigation({ currentPage, onNavigate, stats }: Navigatio
         </div>
       </div>
 
-      {/* Mobile nav */}
       <div className="md:hidden flex border-t border-white/5">
         {navItems.map(item => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
             className={`flex-1 flex flex-col items-center gap-1 py-2 text-[10px] uppercase tracking-wider transition-all ${
-              currentPage === item.id || (item.id === 'mode-select' && currentPage === 'game') ? 'text-gold' : 'text-gray-600'
+              currentPage === item.id || (item.id === 'mode-select' && isGameActive) ? 'text-gold' : 'text-gray-600'
             }`}
           >
             <Icon name={item.icon} size={16} />

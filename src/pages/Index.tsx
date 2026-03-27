@@ -4,9 +4,12 @@ import ModeSelectPage from '@/components/pages/ModeSelectPage';
 import GamePage from '@/components/pages/GamePage';
 import LeaderboardPage from '@/components/pages/LeaderboardPage';
 import SettingsPage from '@/components/pages/SettingsPage';
+import LobbyPage from '@/components/pages/LobbyPage';
+import MultiplayerGamePage from '@/components/pages/MultiplayerGamePage';
 import Navigation from '@/components/Navigation';
+import { useMultiplayer } from '@/hooks/useMultiplayer';
 
-export type Page = 'home' | 'mode-select' | 'game' | 'leaderboard' | 'settings';
+export type Page = 'home' | 'mode-select' | 'game' | 'leaderboard' | 'settings' | 'lobby' | 'multiplayer';
 
 export interface GameStats {
   totalScore: number;
@@ -46,6 +49,8 @@ export default function Index() {
     } catch { return []; }
   });
 
+  const multiplayer = useMultiplayer();
+
   useEffect(() => {
     localStorage.setItem('kinovikto_stats', JSON.stringify(stats));
   }, [stats]);
@@ -80,7 +85,26 @@ export default function Index() {
     setPage('home');
   };
 
-  const navPage = page === 'mode-select' ? 'home' : page;
+  const handleMultiplayerCreate = async () => {
+    const rid = await multiplayer.createRoom();
+    if (rid) {
+      setPage('multiplayer');
+    }
+    return rid;
+  };
+
+  const handleMultiplayerJoin = async (code: string) => {
+    const ok = await multiplayer.joinRoom(code);
+    if (ok) {
+      setPage('multiplayer');
+    }
+    return ok;
+  };
+
+  const handleMultiplayerLeave = () => {
+    multiplayer.leaveRoom();
+    setPage('mode-select');
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative" style={{ fontFamily: 'Oswald, sans-serif' }}>
@@ -89,11 +113,40 @@ export default function Index() {
         background: 'linear-gradient(90deg, transparent, #d4a843 20%, #f0c050 50%, #d4a843 80%, transparent)',
         boxShadow: '0 0 10px rgba(212,168,67,0.5)',
       }} />
-      <Navigation currentPage={navPage} onNavigate={setPage} stats={stats} />
+      <Navigation currentPage={page} onNavigate={(p) => setPage(p as Page)} stats={stats} />
       <main className="relative z-10">
         {page === 'home' && <HomePage onStart={() => setPage('mode-select')} stats={stats} />}
-        {page === 'mode-select' && <ModeSelectPage onSelectSolo={() => setPage('game')} />}
+        {page === 'mode-select' && (
+          <ModeSelectPage
+            onSelectSolo={() => setPage('game')}
+            onSelectMultiplayer={() => setPage('lobby')}
+          />
+        )}
         {page === 'game' && <GamePage onFinish={updateStats} stats={stats} />}
+        {page === 'lobby' && (
+          <LobbyPage
+            onCreateRoom={handleMultiplayerCreate}
+            onJoinRoom={handleMultiplayerJoin}
+            onBack={() => setPage('mode-select')}
+            loading={multiplayer.loading}
+            error={multiplayer.error}
+          />
+        )}
+        {page === 'multiplayer' && multiplayer.roomState && multiplayer.roomId ? (
+          <MultiplayerGamePage
+            roomState={multiplayer.roomState}
+            onAnswer={multiplayer.submitAnswer}
+            onLeave={handleMultiplayerLeave}
+            roomId={multiplayer.roomId}
+          />
+        ) : page === 'multiplayer' && (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center animate-fade-in">
+              <div className="text-5xl mb-4 animate-pulse">🎬</div>
+              <p className="text-gold font-oswald tracking-widest text-sm uppercase">Подключение...</p>
+            </div>
+          </div>
+        )}
         {page === 'leaderboard' && <LeaderboardPage leaderboard={leaderboard} stats={stats} />}
         {page === 'settings' && <SettingsPage stats={stats} onResetStats={() => setStats(defaultStats)} />}
       </main>
