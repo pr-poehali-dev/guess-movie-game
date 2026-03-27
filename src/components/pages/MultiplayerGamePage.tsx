@@ -17,7 +17,6 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const lastQuestionRef = useRef(-1);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
-  const prevImageRef = useRef<string | null>(null);
   const answerSentRef = useRef(false);
   const [frozenQuestion, setFrozenQuestion] = useState<RoomState['question'] | null>(null);
   const prevQuestionRef = useRef<RoomState['question'] | null>(null);
@@ -39,13 +38,11 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           setFrozenQuestion(null);
           setSelectedAnswer(null);
           answerSentRef.current = false;
-          prevImageRef.current = null;
-          setImageLoaded(false);
+          setImageLoaded(true);
         }, 2000);
       } else {
         setSelectedAnswer(null);
         answerSentRef.current = false;
-        prevImageRef.current = null;
         setImageLoaded(false);
         setShowResult(false);
         setFrozenQuestion(null);
@@ -55,19 +52,14 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   }, [roomState.current_question, roomState.last_result, roomState.my_player]);
 
   useEffect(() => {
-    if (roomState.question?.image_url && roomState.question.image_url === prevImageRef.current) {
-      setImageLoaded(true);
-    }
-    if (roomState.question?.image_url) {
-      prevImageRef.current = roomState.question.image_url;
-    }
-  }, [roomState.question?.image_url]);
-
-  useEffect(() => {
-    if (roomState.question && !showResult) {
+    if (roomState.question) {
       prevQuestionRef.current = roomState.question;
+      if (showResult && roomState.question.image_url) {
+        const img = new Image();
+        img.src = roomState.question.image_url;
+      }
     }
-  }, [roomState.question, showResult]);
+  }, [roomState.current_question, showResult, roomState.question]);
 
   useEffect(() => {
     return () => {
