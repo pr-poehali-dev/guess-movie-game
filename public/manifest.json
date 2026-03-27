@@ -30,5 +30,21 @@
       "purpose": "maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/6763fa58-1bf2-4cf3-b666-106983277a89.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "КиноВикторина — мобильная версия"
+    },
+    {
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/e8ac6008-d7f5-44bc-b414-80d280e2a916.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "КиноВикторина — десктоп версия"
+    }
+  ],
   "prefer_related_applications": false
 }
