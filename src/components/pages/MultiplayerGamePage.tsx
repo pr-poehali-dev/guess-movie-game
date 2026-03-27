@@ -220,8 +220,8 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
     );
   }
 
-  const timePercent = (roomState.time_left / 10) * 100;
-  const timeUrgent = roomState.time_left <= 3;
+  const timePercent = roomState.both_answered ? 0 : (roomState.time_left / 10) * 100;
+  const timeUrgent = !roomState.both_answered && roomState.time_left <= 3;
 
   const progress = ((roomState.current_question) / roomState.total_questions) * 100;
 
@@ -345,8 +345,17 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           {(answerSentRef.current || selectedAnswer !== null) && !showResult && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
               <div className="text-center">
-                <Icon name="Clock" size={32} className="text-gold mx-auto mb-2" />
-                <p className="text-gold font-oswald text-sm tracking-wider">Ждём ответ соперника...</p>
+                {roomState.both_answered ? (
+                  <>
+                    <Icon name="CheckCheck" size={32} className="text-green-400 mx-auto mb-2" />
+                    <p className="text-green-400 font-oswald text-sm tracking-wider">Оба ответили!</p>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Clock" size={32} className="text-gold mx-auto mb-2" />
+                    <p className="text-gold font-oswald text-sm tracking-wider">Ждём ответ соперника...</p>
+                  </>
+                )}
               </div>
             </div>
           )}

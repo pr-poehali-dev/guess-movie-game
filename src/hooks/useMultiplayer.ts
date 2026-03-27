@@ -37,6 +37,8 @@ export interface RoomState {
   } | null;
   winner: string | null;
   i_answered: boolean;
+  opponent_answered: boolean;
+  both_answered: boolean;
 }
 
 function shuffle<T>(arr: T[]): T[] {

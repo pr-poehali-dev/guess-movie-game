@@ -240,6 +240,19 @@ def get_room_state(room_id, player_id):
             conn2.close()
             status = 'finished'
 
+    i_answered = (
+        (len(p1_ans) > cur_q if my_number == 1 else len(p2_ans) > cur_q)
+        if status == 'playing' else False
+    )
+    opponent_answered = (
+        (len(p2_ans) > cur_q if my_number == 1 else len(p1_ans) > cur_q)
+        if status == 'playing' else False
+    )
+    both_answered = i_answered and opponent_answered
+
+    if both_answered and status == 'playing':
+        time_left = 0
+
     return resp(200, {
         'room_id': rid,
         'status': status,
@@ -256,10 +269,9 @@ def get_room_state(room_id, player_id):
         'question': current_q,
         'last_result': last_result,
         'winner': winner,
-        'i_answered': (
-            (len(p1_ans) > cur_q if my_number == 1 else len(p2_ans) > cur_q)
-            if status == 'playing' else False
-        ),
+        'i_answered': i_answered,
+        'opponent_answered': opponent_answered,
+        'both_answered': both_answered,
     })
 
 
