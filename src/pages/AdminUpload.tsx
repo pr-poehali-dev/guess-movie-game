@@ -131,7 +131,7 @@ export default function AdminUpload() {
           const b64 = await downloadViaWeserv(paths[j]);
           if (!b64) continue;
 
-          const filename = `${j + 1}.jpg`;
+          const filename = `${Date.now()}_${j}.jpg`;
           const resp = await uploadToS3(m.id, b64, filename);
           if (resp.url) {
             movieUploaded++;
@@ -159,8 +159,6 @@ export default function AdminUpload() {
 
   const handleFileUpload = async (movieId: number, files: FileList) => {
     setUploading(prev => ({ ...prev, [movieId]: true }));
-    const existing = allImages[String(movieId)] || [];
-    let nextNum = existing.length + 1;
     let uploaded = 0;
 
     for (let i = 0; i < files.length; i++) {
@@ -170,8 +168,7 @@ export default function AdminUpload() {
         continue;
       }
       const ext = file.name.split('.').pop() || 'jpg';
-      const filename = `${nextNum}.${ext}`;
-      nextNum++;
+      const filename = `${Date.now()}_${i}.${ext}`;
 
       try {
         const b64 = await toBase64(file);
