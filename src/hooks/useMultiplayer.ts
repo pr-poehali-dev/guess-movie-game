@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { movies } from '@/data/movies';
 import funcUrls from '../../backend/func2url.json';
 
-const API_URL = funcUrls['game-room'];
-const MOVIE_IMAGES_URL = funcUrls['movie-images'];
+const API_URL = funcUrls['game-room'] || '';
+const MOVIE_IMAGES_URL = funcUrls['movie-images'] || '';
 const POLL_INTERVAL = 1500;
 const QUESTIONS_COUNT = 10;
 
