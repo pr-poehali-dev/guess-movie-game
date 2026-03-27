@@ -4,7 +4,7 @@ import funcUrls from '../../backend/func2url.json';
 
 const API_URL = funcUrls['game-room'] || '';
 const MOVIE_IMAGES_URL = funcUrls['movie-images'] || '';
-const POLL_INTERVAL = 1500;
+const POLL_INTERVAL = 2500;
 const QUESTIONS_COUNT = 10;
 
 export interface RoomState {
@@ -122,8 +122,13 @@ export function useMultiplayer() {
       const resp = await fetch(`${API_URL}?room_id=${rid}&player_id=${playerIdRef.current}`, {
         headers: { 'X-Player-Id': playerIdRef.current },
       });
+      if (resp.status === 402) {
+        setError('Сервер временно недоступен — лимит запросов. Попробуйте позже.');
+        stopPolling();
+        return;
+      }
       if (!resp.ok) {
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
         setError(data.error || 'Ошибка загрузки');
         return;
       }
@@ -133,7 +138,7 @@ export function useMultiplayer() {
         stopPolling();
       }
     } catch {
-      // ignore network errors silently
+      console.error('Fetch error: Failed to fetch for', API_URL);
     }
   }, [stopPolling]);
 
@@ -164,6 +169,10 @@ export function useMultiplayer() {
           questions,
         }),
       });
+      if (resp.status === 402) {
+        setError('Сервер временно недоступен — лимит запросов. Попробуйте позже.');
+        return null;
+      }
       const data = await resp.json();
       if (!resp.ok) {
         setError(data.error || 'Ошибка создания');
