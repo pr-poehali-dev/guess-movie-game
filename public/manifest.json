@@ -11,27 +11,21 @@
   "categories": ["games", "entertainment"],
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/bucket/530e91b9-3720-4977-9da6-8df2a92c3182.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/bucket/c4100a6a-3f07-4fa7-9269-ba301822f0d1.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.svg",
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/bucket/c4100a6a-3f07-4fa7-9269-ba301822f0d1.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],
