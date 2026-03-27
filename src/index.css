@@ -217,6 +217,51 @@ body::after {
   }
 }
 
+@keyframes frame-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  60% {
+    opacity: 0.6;
+    transform: scale(0.97);
+    filter: brightness(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: brightness(2);
+  }
+}
+
+@keyframes frame-enter {
+  0% {
+    opacity: 0;
+    transform: scale(1.04);
+    filter: brightness(0.3);
+  }
+  40% {
+    opacity: 0.7;
+    filter: brightness(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes result-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(212, 168, 67, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(212, 168, 67, 0.4);
+  }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease forwards;
 }
@@ -243,6 +288,18 @@ body::after {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.4s ease forwards;
+}
+
+.animate-frame-exit {
+  animation: frame-exit 0.4s ease forwards;
+}
+
+.animate-frame-enter {
+  animation: frame-enter 0.5s ease forwards;
+}
+
+.animate-result-glow {
+  animation: result-glow 1.5s ease-in-out infinite;
 }
 
 .delay-100 {
