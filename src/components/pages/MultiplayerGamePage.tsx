@@ -14,13 +14,13 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const [imageLoaded, setImageLoaded] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
   const [showResult, setShowResult] = useState(false);
-  const [framePhase, setFramePhase] = useState<'idle' | 'exit' | 'enter'>('idle');
   const lastQuestionRef = useRef(-1);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
   const answerSentRef = useRef(false);
   const [frozenQuestion, setFrozenQuestion] = useState<RoomState['question'] | null>(null);
   const prevQuestionRef = useRef<RoomState['question'] | null>(null);
+  const [contentVisible, setContentVisible] = useState(true);
 
   useEffect(() => {
     if (roomState.current_question !== lastQuestionRef.current) {
@@ -35,16 +35,15 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           setTimeout(() => setShakeCard(false), 600);
         }
         resultTimerRef.current = setTimeout(() => {
-          setFramePhase('exit');
+          setContentVisible(false);
           setTimeout(() => {
             setShowResult(false);
             setFrozenQuestion(null);
             setSelectedAnswer(null);
             answerSentRef.current = false;
-            setImageLoaded(true);
-            setFramePhase('enter');
-            setTimeout(() => setFramePhase('idle'), 500);
-          }, 400);
+            setImageLoaded(false);
+            setContentVisible(true);
+          }, 300);
         }, 1600);
       } else {
         setSelectedAnswer(null);
@@ -52,8 +51,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         setImageLoaded(false);
         setShowResult(false);
         setFrozenQuestion(null);
-        setFramePhase('enter');
-        setTimeout(() => setFramePhase('idle'), 500);
+        setContentVisible(true);
       }
       lastQuestionRef.current = roomState.current_question;
     }
@@ -308,7 +306,10 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
 
       {/* Result overlay */}
       {showResult && lastResult && (
-        <div className={`max-w-2xl mx-auto mb-4 animate-fade-in ${framePhase === 'exit' ? 'animate-frame-exit' : ''}`}>
+        <div className="max-w-2xl mx-auto mb-4 animate-fade-in" style={{
+          opacity: contentVisible ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}>
           <div className="card-cinema rounded p-3 text-center animate-result-glow" style={{
             borderColor: myLastCorrect ? 'rgba(72,187,120,0.3)' : 'rgba(229,62,62,0.3)',
           }}>
@@ -324,7 +325,10 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
       )}
 
       {/* Image */}
-      <div className={`max-w-2xl mx-auto mb-6 ${framePhase === 'exit' ? 'animate-frame-exit' : framePhase === 'enter' ? 'animate-frame-enter' : ''}`}>
+      <div className="max-w-2xl mx-auto mb-6" style={{
+        opacity: contentVisible ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+      }}>
         <div className="film-strip relative rounded overflow-hidden" style={{ aspectRatio: '16/9' }}>
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -374,14 +378,20 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
       </div>
 
       {/* Question */}
-      <div className={`max-w-2xl mx-auto mb-4 text-center ${framePhase === 'enter' ? 'animate-fade-in' : ''}`}>
+      <div className="max-w-2xl mx-auto mb-4 text-center" style={{
+        opacity: contentVisible ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+      }}>
         <p className="font-playfair text-xl text-white">
           Какой это фильм?
         </p>
       </div>
 
       {/* Answers */}
-      <div className={`max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 ${framePhase === 'exit' ? 'animate-frame-exit' : framePhase === 'enter' ? 'animate-frame-enter' : ''}`}>
+      <div className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3" style={{
+        opacity: contentVisible ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+      }}>
         {question.options.map((option, idx) => {
           const letters = ['A', 'B', 'C', 'D'];
           const isSelected = selectedAnswer === idx;
@@ -413,7 +423,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
                 background: bgColor,
                 border: `1px solid ${borderColor}`,
                 opacity: isAnswered && !isSelected && !showResult ? 0.4 : 1,
-                animationDelay: framePhase === 'enter' ? `${idx * 0.06}s` : undefined,
+                transitionDelay: `${idx * 0.05}s`,
               }}
             >
               <span className="w-8 h-8 rounded flex items-center justify-center shrink-0 text-xs font-oswald" style={{
