@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#0a0a0a"/>
+  <rect x="120" y="140" width="272" height="200" rx="16" fill="none" stroke="#d4a843" stroke-width="12"/>
+  <rect x="120" y="140" width="272" height="40" rx="16" fill="#d4a843"/>
+  <line x1="160" y1="140" x2="160" y2="180" stroke="#0a0a0a" stroke-width="6"/>
+  <line x1="200" y1="140" x2="200" y2="180" stroke="#0a0a0a" stroke-width="6"/>
+  <line x1="312" y1="140" x2="312" y2="180" stroke="#0a0a0a" stroke-width="6"/>
+  <line x1="352" y1="140" x2="352" y2="180" stroke="#0a0a0a" stroke-width="6"/>
+  <rect x="100" y="340" width="40" height="60" rx="4" fill="#d4a843" opacity="0.3"/>
+  <rect x="372" y="340" width="40" height="60" rx="4" fill="#d4a843" opacity="0.3"/>
+  <text x="256" y="300" text-anchor="middle" font-family="serif" font-size="80" font-weight="bold" fill="#d4a843">?</text>
+  <circle cx="256" cy="410" r="30" fill="none" stroke="#d4a843" stroke-width="6" opacity="0.5"/>
+  <polygon points="246,398 246,422 268,410" fill="#d4a843" opacity="0.5"/>
+</svg>

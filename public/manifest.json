@@ -1,0 +1,27 @@
+{
+  "name": "КиноВикторина — Угадай фильм по кадру",
+  "short_name": "КиноВикторина",
+  "description": "Угадай фильм по кадру! Интерактивная викторина с атмосферой кинотеатра. Одиночный и сетевой режим.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#d4a843",
+  "lang": "ru",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn.poehali.dev/projects/3fb99e4a-fb09-4bc2-aa94-00d12278029f/files/6dc305b5-f839-4519-b68f-a22b218fd17c.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false
+}
