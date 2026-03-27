@@ -19,10 +19,13 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const [copied, setCopied] = useState(false);
   const prevImageRef = useRef<string | null>(null);
   const answerSentRef = useRef(false);
+  const [frozenQuestion, setFrozenQuestion] = useState<RoomState['question'] | null>(null);
+  const prevQuestionRef = useRef<RoomState['question'] | null>(null);
 
   useEffect(() => {
     if (roomState.current_question !== lastQuestionRef.current) {
       if (lastQuestionRef.current >= 0 && roomState.last_result) {
+        setFrozenQuestion(prevQuestionRef.current);
         setShowResult(true);
         const wasCorrect = roomState.my_player === 1
           ? roomState.last_result.player1_correct
@@ -33,6 +36,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         }
         resultTimerRef.current = setTimeout(() => {
           setShowResult(false);
+          setFrozenQuestion(null);
           setSelectedAnswer(null);
           answerSentRef.current = false;
           prevImageRef.current = null;
@@ -44,6 +48,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         prevImageRef.current = null;
         setImageLoaded(false);
         setShowResult(false);
+        setFrozenQuestion(null);
       }
       lastQuestionRef.current = roomState.current_question;
     }
@@ -57,6 +62,12 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
       prevImageRef.current = roomState.question.image_url;
     }
   }, [roomState.question?.image_url]);
+
+  useEffect(() => {
+    if (roomState.question && !showResult) {
+      prevQuestionRef.current = roomState.question;
+    }
+  }, [roomState.question, showResult]);
 
   useEffect(() => {
     return () => {
@@ -207,8 +218,8 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
     );
   }
 
-  // Playing state
-  const question = roomState.question;
+  // Playing state — use frozen question during result display to keep previous frame visible
+  const question = (showResult && frozenQuestion) ? frozenQuestion : roomState.question;
   if (!question) {
     return (
       <div className="min-h-screen flex items-center justify-center">
