@@ -1,21 +1,45 @@
 import { useState, useEffect } from 'react';
-import { useAuth, VkFriend } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
+import funcUrls from '../../../backend/func2url.json';
+
+const API_URL = (funcUrls as Record<string, string>)['vk-auth'] || '';
+
+interface LeaderboardPlayer {
+  rank: number;
+  id: number;
+  vk_id: number;
+  first_name: string;
+  last_name: string;
+  photo_url: string;
+  total_score: number;
+  games_played: number;
+  best_score: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
 
 export default function ProfilePage() {
-  const { user, logout, fetchFriends } = useAuth();
-  const [friends, setFriends] = useState<VkFriend[]>([]);
-  const [loadingFriends, setLoadingFriends] = useState(false);
-  const [activeTab, setActiveTab] = useState<'stats' | 'history' | 'friends'>('stats');
+  const { user, logout } = useAuth();
+  const [leaders, setLeaders] = useState<LeaderboardPlayer[]>([]);
+  const [loadingLeaders, setLoadingLeaders] = useState(false);
+  const [activeTab, setActiveTab] = useState<'stats' | 'leaders'>('stats');
 
   useEffect(() => {
-    if (activeTab === 'friends' && friends.length === 0) {
-      setLoadingFriends(true);
-      fetchFriends()
-        .then(setFriends)
-        .finally(() => setLoadingFriends(false));
+    if (activeTab === 'leaders' && leaders.length === 0) {
+      setLoadingLeaders(true);
+      fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'leaderboard' }),
+      })
+        .then(r => r.json())
+        .then(data => setLeaders(data.players || []))
+        .catch(() => {})
+        .finally(() => setLoadingLeaders(false));
     }
-  }, [activeTab, friends.length, fetchFriends]);
+  }, [activeTab, leaders.length]);
 
   if (!user) return null;
 
@@ -23,8 +47,12 @@ export default function ProfilePage() {
     ? Math.round((user.wins / user.games_played) * 100)
     : 0;
 
-  const playingFriends = friends.filter(f => f.is_player);
-  const otherFriends = friends.filter(f => !f.is_player);
+  const medalEmoji = (rank: number) => {
+    if (rank === 1) return '🥇';
+    if (rank === 2) return '🥈';
+    if (rank === 3) return '🥉';
+    return `${rank}`;
+  };
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-6">
@@ -62,7 +90,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="flex gap-2 mb-6 animate-fade-in-up delay-100">
-          {(['stats', 'friends'] as const).map(tab => (
+          {(['stats', 'leaders'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -73,7 +101,7 @@ export default function ProfilePage() {
                 color: activeTab === tab ? '#d4a843' : '#666',
               }}
             >
-              {tab === 'stats' ? 'Статистика' : 'Друзья'}
+              {tab === 'stats' ? 'Статистика' : 'Лидеры'}
             </button>
           ))}
         </div>
@@ -118,109 +146,72 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {activeTab === 'friends' && (
-          <div className="space-y-4 animate-fade-in-up delay-200">
-            {loadingFriends ? (
+        {activeTab === 'leaders' && (
+          <div className="space-y-3 animate-fade-in-up delay-200">
+            {loadingLeaders ? (
               <div className="text-center py-12">
-                <div className="text-5xl mb-4 animate-pulse">🎬</div>
-                <p className="text-gold font-oswald tracking-widest text-sm uppercase">Загрузка друзей...</p>
+                <div className="text-5xl mb-4 animate-pulse">🏆</div>
+                <p className="text-gold font-oswald tracking-widest text-sm uppercase">Загрузка рейтинга...</p>
               </div>
-            ) : friends.length === 0 ? (
+            ) : leaders.length === 0 ? (
               <div className="text-center py-12 card-cinema rounded p-8">
-                <div className="text-4xl mb-3">👥</div>
-                <p className="text-gray-400 font-oswald">Список друзей пуст</p>
+                <div className="text-4xl mb-3">🏆</div>
+                <p className="text-gray-400 font-oswald">Пока нет игроков в рейтинге</p>
                 <p className="text-gray-600 text-sm font-oswald font-light mt-1">
-                  Пригласите друзей в игру!
+                  Сыграйте первую игру!
                 </p>
               </div>
             ) : (
-              <>
-                {playingFriends.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon name="Gamepad2" size={14} className="text-gold" />
-                      <span className="text-gold font-oswald text-xs uppercase tracking-wider">
-                        Играют в КиноВикторину ({playingFriends.length})
-                      </span>
+              leaders.map(player => {
+                const isMe = player.id === user.id;
+                return (
+                  <div
+                    key={player.id}
+                    className="card-cinema rounded p-4 flex items-center gap-3"
+                    style={isMe ? { border: '1px solid rgba(212,168,67,0.4)', background: 'rgba(212,168,67,0.06)' } : {}}
+                  >
+                    <div className="w-8 text-center font-playfair font-bold text-lg" style={{ color: player.rank <= 3 ? '#d4a843' : '#666' }}>
+                      {medalEmoji(player.rank)}
                     </div>
-                    <div className="space-y-2">
-                      {playingFriends.map(friend => (
-                        <div key={friend.vk_id} className="card-cinema rounded p-4 flex items-center gap-3">
-                          {friend.photo_url ? (
-                            <img src={friend.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: '2px solid rgba(212,168,67,0.3)' }} />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-cinema-light flex items-center justify-center text-gold font-bold">
-                              {friend.first_name[0]}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white font-oswald text-sm truncate">
-                              {friend.first_name} {friend.last_name}
-                            </div>
-                            {friend.stats && (
-                              <div className="text-gray-500 text-xs font-oswald font-light">
-                                {friend.stats.total_score} очков · {friend.stats.games_played} игр
-                              </div>
-                            )}
-                          </div>
-                          <Icon name="Star" size={14} className="text-gold flex-shrink-0" />
-                        </div>
-                      ))}
+                    {player.photo_url ? (
+                      <img src={player.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: isMe ? '2px solid rgba(212,168,67,0.5)' : '2px solid rgba(255,255,255,0.08)' }} />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-gold font-bold" style={{ background: 'rgba(212,168,67,0.12)' }}>
+                        {player.first_name[0] || '?'}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white font-oswald text-sm truncate">
+                        {player.first_name} {player.last_name}
+                        {isMe && <span className="text-gold ml-1">(вы)</span>}
+                      </div>
+                      <div className="text-gray-500 text-xs font-oswald font-light">
+                        {player.games_played} игр · {player.wins} побед
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-gold font-playfair font-bold">{player.total_score}</div>
+                      <div className="text-gray-600 text-xs font-oswald">очков</div>
                     </div>
                   </div>
-                )}
-
-                {otherFriends.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon name="Users" size={14} className="text-gray-500" />
-                      <span className="text-gray-500 font-oswald text-xs uppercase tracking-wider">
-                        Друзья VK ({otherFriends.length})
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {otherFriends.map(friend => (
-                        <div key={friend.vk_id} className="card-cinema rounded p-4 flex items-center gap-3" style={{ opacity: 0.6 }}>
-                          {friend.photo_url ? (
-                            <img src={friend.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-cinema-light flex items-center justify-center text-gray-500 font-bold">
-                              {friend.first_name[0]}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-gray-400 font-oswald text-sm truncate">
-                              {friend.first_name} {friend.last_name}
-                            </div>
-                            <div className="text-gray-600 text-xs font-oswald font-light">Ещё не играет</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+                );
+              })
             )}
           </div>
         )}
 
-        <div className="mt-8 animate-fade-in-up delay-300">
-          <button
-            onClick={logout}
-            className="w-full py-3 rounded-sm text-sm font-oswald tracking-wider transition-all"
-            style={{
-              background: 'rgba(248,113,113,0.08)',
-              border: '1px solid rgba(248,113,113,0.2)',
-              color: '#f87171',
-            }}
-          >
-            Выйти из аккаунта
-          </button>
-        </div>
-
-        <div className="text-center mt-8 text-gray-700 text-xs font-oswald tracking-wider">
-          КиноВикторина · {new Date().getFullYear()}
-        </div>
+        <button
+          onClick={logout}
+          className="w-full mt-8 py-3 rounded-sm text-sm font-oswald tracking-wider transition-all animate-fade-in-up delay-300"
+          style={{
+            background: 'rgba(248,113,113,0.08)',
+            border: '1px solid rgba(248,113,113,0.2)',
+            color: '#f87171',
+          }}
+        >
+          <Icon name="LogOut" size={14} className="inline mr-2" />
+          Выйти из аккаунта
+        </button>
       </div>
     </div>
   );

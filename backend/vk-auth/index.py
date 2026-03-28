@@ -296,81 +296,41 @@ def update_stats(body):
     })
 
 
-def friends(body):
-    result = validate_session(body)
-    if not result:
-        return resp(401, {'error': 'Сессия не найдена или истекла'})
-
-    user_id, conn, cur = result
+def leaderboard(body):
+    conn = get_conn()
+    cur = conn.cursor()
 
     cur.execute(
-        f"SELECT access_token FROM {SCHEMA}.users WHERE id = %s",
-        (user_id,)
+        f"""SELECT id, vk_id, first_name, last_name, photo_url,
+            total_score, games_played, best_score, wins, losses, draws
+        FROM {SCHEMA}.users
+        WHERE games_played > 0
+        ORDER BY total_score DESC
+        LIMIT 50"""
     )
-    token_row = cur.fetchone()
-    if not token_row or not token_row[0]:
-        cur.close()
-        conn.close()
-        return resp(400, {'error': 'VK токен не найден, требуется повторная авторизация'})
 
-    access_token = token_row[0]
-
-    friends_url = (
-        f"https://api.vk.com/method/friends.get?"
-        f"fields=photo_200,first_name,last_name"
-        f"&access_token={access_token}&v=5.131"
-    )
-    vk_data = vk_api_get(friends_url)
-
-    if 'error' in vk_data:
-        cur.close()
-        conn.close()
-        return resp(400, {'error': 'Ошибка получения списка друзей VK'})
-
-    vk_friends = vk_data.get('response', {}).get('items', [])
-    if not vk_friends:
-        cur.close()
-        conn.close()
-        return resp(200, {'friends': []})
-
-    friend_vk_ids = [f['id'] for f in vk_friends]
-
-    placeholders = ','.join(['%s'] * len(friend_vk_ids))
-    cur.execute(
-        f"""SELECT vk_id, total_score, games_played, best_score, wins, losses, draws, perfect_rounds
-        FROM {SCHEMA}.users WHERE vk_id IN ({placeholders})""",
-        friend_vk_ids
-    )
-    player_rows = cur.fetchall()
+    rows = cur.fetchall()
     cur.close()
     conn.close()
 
-    players_map = {}
-    for row in player_rows:
-        players_map[row[0]] = {
-            'total_score': row[1] or 0,
-            'games_played': row[2] or 0,
-            'best_score': row[3] or 0,
-            'wins': row[4] or 0,
-            'losses': row[5] or 0,
-            'draws': row[6] or 0,
-            'perfect_rounds': row[7] or 0,
-        }
-
-    friends_list = []
-    for f in vk_friends:
-        vk_id = f['id']
-        is_player = vk_id in players_map
-        friends_list.append({
-            'vk_id': vk_id,
-            'first_name': f.get('first_name', ''),
-            'last_name': f.get('last_name', ''),
-            'photo_url': f.get('photo_200', ''),
-            'is_player': is_player,
-            'stats': players_map.get(vk_id),
+    players = []
+    for i, row in enumerate(rows):
+        players.append({
+            'rank': i + 1,
+            'id': row[0],
+            'vk_id': row[1],
+            'first_name': row[2] or '',
+            'last_name': row[3] or '',
+            'photo_url': row[4] or '',
+            'total_score': row[5] or 0,
+            'games_played': row[6] or 0,
+            'best_score': row[7] or 0,
+            'wins': row[8] or 0,
+            'losses': row[9] or 0,
+            'draws': row[10] or 0,
         })
 
-    return resp(200, {'friends': friends_list})
+    return resp(200, {'players': players})
 
 
 def handler(event: dict, context) -> dict:
@@ -395,7 +355,7 @@ def handler(event: dict, context) -> dict:
         return logout(body)
     elif action == 'update_stats':
         return update_stats(body)
-    elif action == 'friends':
-        return friends(body)
+    elif action == 'leaderboard':
+        return leaderboard(body)
     else:
         return resp(400, {'error': f'Неизвестное действие: {action}'})
