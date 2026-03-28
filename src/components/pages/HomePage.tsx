@@ -1,6 +1,7 @@
 import { GameStats } from '@/pages/Index';
 import { achievements } from '@/data/movies';
 import { useHomeImages } from '@/hooks/useTmdbImages';
+import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
 
 interface HomePageProps {
@@ -11,6 +12,7 @@ interface HomePageProps {
 export default function HomePage({ onStart, stats }: HomePageProps) {
   const unlockedCount = stats.unlockedAchievements.length;
   const images = useHomeImages();
+  const { isAuthenticated, user, login } = useAuth();
 
   return (
     <div className="min-h-screen pt-20 pb-16 px-6">
@@ -44,7 +46,17 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
           Открывай достижения и покоряй рейтинг.
         </p>
 
-        {/* CTA */}
+        {isAuthenticated && user && (
+          <div className="mb-8 animate-fade-in-up delay-250 flex items-center justify-center gap-3">
+            {user.photo_url && (
+              <img src={user.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: '2px solid rgba(212,168,67,0.4)' }} />
+            )}
+            <span className="text-gray-400 font-oswald">
+              Привет, <span className="text-gold">{user.first_name}</span>!
+            </span>
+          </div>
+        )}
+
         <div className="animate-fade-in-up delay-300">
           <button
             onClick={onStart}
@@ -56,6 +68,19 @@ export default function HomePage({ onStart, stats }: HomePageProps) {
             </span>
           </button>
         </div>
+
+        {!isAuthenticated && (
+          <div className="mt-4 animate-fade-in-up delay-350">
+            <button
+              onClick={login}
+              className="flex items-center gap-2 mx-auto px-5 py-2.5 rounded-sm text-sm font-oswald tracking-wider transition-all"
+              style={{ background: 'rgba(74,118,168,0.15)', color: '#7eaacc', border: '1px solid rgba(74,118,168,0.25)' }}
+            >
+              <span style={{ fontWeight: 'bold' }}>VK</span>
+              Войти и сохранять прогресс
+            </button>
+          </div>
+        )}
 
         {/* Stats mini */}
         {stats.gamesPlayed > 0 && (

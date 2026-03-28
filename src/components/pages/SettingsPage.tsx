@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GameStats } from '@/pages/Index';
 import { achievements } from '@/data/movies';
+import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
 
 interface SettingsPageProps {
@@ -9,6 +10,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ stats, onResetStats }: SettingsPageProps) {
+  const { user, isAuthenticated, login } = useAuth();
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('kinovikto_name') || '');
   const [saved, setSaved] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -54,7 +56,48 @@ export default function SettingsPage({ stats, onResetStats }: SettingsPageProps)
         </div>
 
         <div className="space-y-4">
-          {/* Player name */}
+          {!isAuthenticated && (
+            <div className="card-cinema rounded p-6 animate-fade-in-up delay-75" style={{ borderColor: 'rgba(74,118,168,0.3)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#4a76a8' }}>
+                  <span className="text-white font-bold text-lg">VK</span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-white font-oswald text-sm">Войти через ВКонтакте</div>
+                  <p className="text-gray-500 text-xs font-oswald font-light">Сохраняй прогресс, смотри друзей и соревнуйся</p>
+                </div>
+                <button
+                  onClick={login}
+                  className="px-4 py-2 rounded-sm text-sm font-oswald tracking-wider transition-all flex-shrink-0"
+                  style={{ background: '#4a76a8', color: '#fff', border: '1px solid rgba(74,118,168,0.6)' }}
+                >
+                  Войти
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isAuthenticated && user && (
+            <div className="card-cinema rounded p-6 animate-fade-in-up delay-75" style={{ borderColor: 'rgba(74,222,128,0.2)' }}>
+              <div className="flex items-center gap-3">
+                {user.photo_url ? (
+                  <img src={user.photo_url} alt="" className="w-12 h-12 rounded-full object-cover" style={{ border: '2px solid rgba(212,168,67,0.3)' }} />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #d4a843, #9a7830)' }}>
+                    {user.first_name[0]}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="text-white font-oswald text-sm">{user.first_name} {user.last_name}</div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Icon name="Check" size={12} className="text-green-400" />
+                    <span className="text-green-400 text-xs font-oswald font-light">VK подключён</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card-cinema rounded p-6 animate-fade-in-up delay-100">
             <div className="flex items-center gap-2 mb-4">
               <Icon name="User" size={14} className="text-gold" />

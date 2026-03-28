@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get auth URL",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "get_auth_url", "redirect_uri": "https://example.com/callback"},
+      "expectedStatus": 200,
+      "expectedBody": {"auth_url": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Me without token",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "me"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

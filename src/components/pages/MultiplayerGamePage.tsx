@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { RoomState } from '@/hooks/useMultiplayer';
+import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
 
 interface MultiplayerGamePageProps {
@@ -10,6 +11,7 @@ interface MultiplayerGamePageProps {
 }
 
 export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, roomId }: MultiplayerGamePageProps) {
+  const { isAuthenticated, updateStats: updateServerStats } = useAuth();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
@@ -21,6 +23,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const [frozenQuestion, setFrozenQuestion] = useState<RoomState['question'] | null>(null);
   const prevQuestionRef = useRef<RoomState['question'] | null>(null);
   const [contentVisible, setContentVisible] = useState(true);
+  const statsSentRef = useRef(false);
 
   useEffect(() => {
     if (roomState.current_question !== lastQuestionRef.current) {
@@ -94,6 +97,21 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   const opponentScore = isMe1 ? roomState.player2_score : roomState.player1_score;
   const myName = isMe1 ? roomState.player1_name : (roomState.player2_name || 'Игрок 2');
   const opponentName = isMe1 ? (roomState.player2_name || 'Игрок 2') : roomState.player1_name;
+
+  useEffect(() => {
+    if (roomState.status === 'finished' && isAuthenticated && !statsSentRef.current) {
+      statsSentRef.current = true;
+      const iWon = (isMe1 && roomState.winner === 'player1') || (!isMe1 && roomState.winner === 'player2');
+      const isDraw = roomState.winner === 'draw';
+      updateServerStats({
+        score: myScore,
+        result: isDraw ? 'draw' : iWon ? 'win' : 'loss',
+        game_type: 'multiplayer',
+        opponent_name: opponentName,
+        room_id: roomId,
+      }).catch(() => {});
+    }
+  }, [roomState.status, roomState.winner, isAuthenticated, isMe1, myScore, opponentName, roomId, updateServerStats]);
 
   if (roomState.status === 'waiting') {
     return (

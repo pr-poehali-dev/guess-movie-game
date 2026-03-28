@@ -6,10 +6,12 @@ import LeaderboardPage from '@/components/pages/LeaderboardPage';
 import SettingsPage from '@/components/pages/SettingsPage';
 import LobbyPage from '@/components/pages/LobbyPage';
 import MultiplayerGamePage from '@/components/pages/MultiplayerGamePage';
+import ProfilePage from '@/components/pages/ProfilePage';
 import Navigation from '@/components/Navigation';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
+import { useAuth } from '@/hooks/useAuth';
 
-export type Page = 'home' | 'mode-select' | 'game' | 'leaderboard' | 'settings' | 'lobby' | 'multiplayer';
+export type Page = 'home' | 'mode-select' | 'game' | 'leaderboard' | 'settings' | 'lobby' | 'multiplayer' | 'profile';
 
 export interface GameStats {
   totalScore: number;
@@ -29,6 +31,7 @@ const defaultStats: GameStats = {
 
 export default function Index() {
   const [page, setPage] = useState<Page>('home');
+  const { user, isAuthenticated, updateStats: updateServerStats } = useAuth();
   const [stats, setStats] = useState<GameStats>(() => {
     try {
       const saved = localStorage.getItem('kinovikto_stats');
@@ -50,6 +53,15 @@ export default function Index() {
   });
 
   const multiplayer = useMultiplayer();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const vkName = `${user.first_name} ${user.last_name}`.trim();
+      if (vkName) {
+        localStorage.setItem('kinovikto_name', vkName);
+      }
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     localStorage.setItem('kinovikto_stats', JSON.stringify(stats));
@@ -80,6 +92,14 @@ export default function Index() {
           .slice(0, 10);
         return updated;
       });
+    }
+
+    if (isAuthenticated) {
+      updateServerStats({
+        score: newScore,
+        result: perfectRound ? 'win' : 'draw',
+        game_type: 'solo',
+      }).catch(() => {});
     }
 
     setPage('home');
@@ -148,6 +168,7 @@ export default function Index() {
           </div>
         )}
         {page === 'leaderboard' && <LeaderboardPage leaderboard={leaderboard} stats={stats} />}
+        {page === 'profile' && <ProfilePage />}
         {page === 'settings' && <SettingsPage stats={stats} onResetStats={() => setStats(defaultStats)} />}
       </main>
     </div>
