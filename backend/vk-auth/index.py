@@ -61,6 +61,7 @@ def validate_session(body):
 
 def login_with_token(body):
     access_token = body.get('access_token')
+    print(f"[LOGIN] body keys: {list(body.keys())}, has token: {bool(access_token)}")
     if not access_token:
         return resp(400, {'error': 'access_token обязателен'})
 
@@ -70,8 +71,10 @@ def login_with_token(body):
         f"&access_token={access_token}&v=5.131"
     )
     user_data = vk_api_get(user_url)
+    print(f"[LOGIN] vk response keys: {list(user_data.keys())}")
 
     if 'error' in user_data:
+        print(f"[LOGIN] vk error: {user_data['error']}")
         return resp(400, {'error': 'Невалидный access_token или ошибка VK API'})
 
     vk_user = user_data['response'][0]

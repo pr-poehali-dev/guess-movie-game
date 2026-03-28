@@ -137,7 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!VKID) throw new Error('VK ID SDK not loaded');
       initVKID();
       const tokenData = await VKID.Auth.exchangeCode(code, deviceId);
-      await loginWithToken(tokenData.access_token, tokenData.user_id);
+      console.log('[VK AUTH] exchangeCode result keys:', Object.keys(tokenData));
+      const token = tokenData.access_token || tokenData.accessToken;
+      const userId = tokenData.user_id || tokenData.userId;
+      console.log('[VK AUTH] token exists:', !!token, 'userId:', userId);
+      await loginWithToken(token, userId);
       window.history.replaceState({}, '', window.location.pathname);
       return true;
     } catch {
