@@ -68,7 +68,9 @@ def get_auth_url(body):
     if not redirect_uri:
         return resp(400, {'error': 'redirect_uri обязателен'})
 
+    redirect_uri = redirect_uri.rstrip('/')
     encoded_uri = urllib.parse.quote(redirect_uri, safe='')
+    print(f"[VK AUTH] app_id={VK_APP_ID}, redirect_uri={redirect_uri}")
     auth_url = (
         f"https://oauth.vk.com/authorize?client_id={VK_APP_ID}"
         f"&display=page&redirect_uri={encoded_uri}"
