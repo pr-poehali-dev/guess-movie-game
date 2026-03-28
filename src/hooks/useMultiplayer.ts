@@ -245,6 +245,47 @@ export function useMultiplayer() {
     }
   }, [roomId, pollRoom]);
 
+  const findMatch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!API_URL) {
+        setError('Сервер недоступен, попробуйте позже');
+        return null;
+      }
+      const questions = await prepareQuestions();
+      const playerName = localStorage.getItem('kinovikto_name') || 'Игрок';
+
+      const resp = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'matchmaking',
+          player_name: playerName,
+          player_id: playerIdRef.current,
+          questions,
+        }),
+      });
+      if (resp.status === 402) {
+        setError('Сервер временно недоступен — лимит запросов. Попробуйте позже.');
+        return null;
+      }
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data.error || 'Ошибка поиска');
+        return null;
+      }
+      setRoomId(data.room_id);
+      startPolling(data.room_id);
+      return data.room_id;
+    } catch {
+      setError('Ошибка сети');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [startPolling]);
+
   const leaveRoom = useCallback(() => {
     stopPolling();
     setRoomState(null);
@@ -263,6 +304,7 @@ export function useMultiplayer() {
     roomId,
     createRoom,
     joinRoom,
+    findMatch,
     submitAnswer,
     leaveRoom,
     setError,

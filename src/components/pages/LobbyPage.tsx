@@ -4,18 +4,29 @@ import Icon from '@/components/ui/icon';
 interface LobbyPageProps {
   onCreateRoom: () => Promise<string | null>;
   onJoinRoom: (code: string) => Promise<boolean>;
+  onFindMatch?: () => Promise<string | null>;
   onBack: () => void;
   loading: boolean;
   error: string | null;
+  isAuthenticated?: boolean;
 }
 
-export default function LobbyPage({ onCreateRoom, onJoinRoom, onBack, loading, error }: LobbyPageProps) {
-  const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
+export default function LobbyPage({ onCreateRoom, onJoinRoom, onFindMatch, onBack, loading, error, isAuthenticated }: LobbyPageProps) {
+  const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'matchmaking'>('choose');
   const [code, setCode] = useState('');
 
   const handleCreate = async () => {
     setMode('create');
     const result = await onCreateRoom();
+    if (!result) {
+      setMode('choose');
+    }
+  };
+
+  const handleFindMatch = async () => {
+    if (!onFindMatch) return;
+    setMode('matchmaking');
+    const result = await onFindMatch();
     if (!result) {
       setMode('choose');
     }
@@ -45,6 +56,36 @@ export default function LobbyPage({ onCreateRoom, onJoinRoom, onBack, loading, e
           </div>
 
           <div className="space-y-4">
+            {isAuthenticated && onFindMatch && (
+              <button
+                onClick={handleFindMatch}
+                disabled={loading}
+                className="card-cinema rounded p-6 w-full text-left group transition-all duration-300 relative overflow-hidden"
+                style={{ border: '1px solid rgba(147,51,234,0.25)' }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{
+                  background: 'radial-gradient(circle at 50% 50%, rgba(147,51,234,0.08) 0%, transparent 70%)',
+                }} />
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded flex items-center justify-center shrink-0" style={{
+                    background: 'linear-gradient(135deg, rgba(147,51,234,0.2), rgba(147,51,234,0.05))',
+                    border: '1px solid rgba(147,51,234,0.3)',
+                  }}>
+                    <Icon name="Zap" size={22} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-playfair text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
+                      Найти соперника
+                    </h3>
+                    <p className="text-gray-500 text-xs font-oswald font-light">
+                      Автоподбор — рейтинговая игра
+                    </p>
+                  </div>
+                  <Icon name="ArrowRight" size={18} className="text-gray-600 ml-auto group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                </div>
+              </button>
+            )}
+
             <button
               onClick={handleCreate}
               disabled={loading}
@@ -191,17 +232,22 @@ export default function LobbyPage({ onCreateRoom, onJoinRoom, onBack, loading, e
     );
   }
 
+  const isMatchmaking = mode === 'matchmaking';
+
   return (
     <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
       <div className="max-w-md w-full text-center animate-fade-in">
-        <div className="text-5xl mb-6 animate-pulse">🎬</div>
+        <div className="text-5xl mb-6 animate-pulse">{isMatchmaking ? '⚔️' : '🎬'}</div>
         <h2 className="font-playfair text-2xl font-bold text-gradient-gold mb-3">
-          Создаём комнату...
+          {isMatchmaking ? 'Ищем соперника...' : 'Создаём комнату...'}
         </h2>
         <p className="text-gray-500 font-oswald font-light text-sm mb-6">
-          Подбираем кадры для викторины
+          {isMatchmaking ? 'Подбираем достойного оппонента' : 'Подбираем кадры для викторины'}
         </p>
-        <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto" style={{
+          borderColor: isMatchmaking ? 'rgba(147,51,234,0.3)' : 'rgba(212,168,67,0.3)',
+          borderTopColor: isMatchmaking ? '#a78bfa' : '#d4a843',
+        }} />
 
         {error && (
           <div className="mt-6 p-3 rounded text-center text-sm font-oswald" style={{

@@ -113,6 +113,14 @@ export default function Index() {
     return rid;
   };
 
+  const handleFindMatch = async () => {
+    const rid = await multiplayer.findMatch();
+    if (rid) {
+      setPage('multiplayer');
+    }
+    return rid;
+  };
+
   const handleMultiplayerJoin = async (code: string) => {
     const ok = await multiplayer.joinRoom(code);
     if (ok) {
@@ -147,9 +155,11 @@ export default function Index() {
           <LobbyPage
             onCreateRoom={handleMultiplayerCreate}
             onJoinRoom={handleMultiplayerJoin}
+            onFindMatch={handleFindMatch}
             onBack={() => setPage('mode-select')}
             loading={multiplayer.loading}
             error={multiplayer.error}
+            isAuthenticated={isAuthenticated}
           />
         )}
         {page === 'multiplayer' && multiplayer.roomState && multiplayer.roomId ? (

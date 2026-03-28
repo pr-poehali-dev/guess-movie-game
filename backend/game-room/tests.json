@@ -41,6 +41,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "POST matchmaking without questions",
+      "method": "POST",
+      "path": "/",
+      "body": "{\"action\": \"matchmaking\", \"player_name\": \"Test\", \"questions\": []}",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "POST unknown action",
       "method": "POST",
       "path": "/",

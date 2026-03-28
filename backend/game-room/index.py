@@ -572,6 +572,75 @@ def submit_answer(body, player_id):
     return resp(200, {'ok': True})
 
 
+def matchmaking(body):
+    """Автопоиск соперника: подключает к свободной комнате или создаёт новую"""
+    player_name = body.get('player_name', 'Игрок')
+    player_id = body.get('player_id') or generate_player_id()
+    questions = body.get('questions', [])
+
+    if not questions or len(questions) < QUESTIONS_PER_GAME:
+        return resp(400, {'error': 'Нужно минимум 10 вопросов'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        f"""SELECT id, player1_id FROM {SCHEMA}.game_rooms
+        WHERE status = 'waiting'
+            AND player1_id != %s
+            AND created_at > NOW() - INTERVAL '5 minutes'
+        ORDER BY created_at ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED""",
+        (player_id,)
+    )
+    row = cur.fetchone()
+
+    if row:
+        room_id = row[0]
+        now = datetime.utcnow()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.game_rooms
+            SET player2_id = %s, player2_name = %s, status = 'playing',
+                question_started_at = %s, updated_at = %s
+            WHERE id = %s AND status = 'waiting'
+            RETURNING id""",
+            (player_id, player_name, now, now, room_id)
+        )
+        updated = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        if updated:
+            return resp(200, {
+                'room_id': room_id,
+                'player_id': player_id,
+                'player_number': 2,
+                'matched': True,
+            })
+
+    room_id = generate_room_id()
+    questions_json = json.dumps(questions[:QUESTIONS_PER_GAME], ensure_ascii=False)
+
+    cur.execute(
+        f"""INSERT INTO {SCHEMA}.game_rooms
+        (id, player1_id, player1_name, status, questions_data, current_question, movie_ids)
+        VALUES (%s, %s, %s, 'waiting', %s, 0, '')""",
+        (room_id, player_id, player_name, questions_json)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return resp(200, {
+        'room_id': room_id,
+        'player_id': player_id,
+        'player_number': 1,
+        'matched': False,
+    })
+
+
 def handler(event, context):
     """Управление игровыми комнатами сетевого режима"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -603,6 +672,8 @@ def handler(event, context):
             return join_room(body)
         elif action == 'answer':
             return submit_answer(body, player_id)
+        elif action == 'matchmaking':
+            return matchmaking(body)
         else:
             return resp(400, {'error': f'Неизвестное действие: {action}'})
 
