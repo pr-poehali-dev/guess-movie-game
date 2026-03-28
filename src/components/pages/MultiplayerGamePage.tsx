@@ -11,7 +11,7 @@ interface MultiplayerGamePageProps {
 }
 
 export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, roomId }: MultiplayerGamePageProps) {
-  const { isAuthenticated, updateStats: updateServerStats } = useAuth();
+  const { isAuthenticated, updateStats: updateServerStats, user } = useAuth();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
@@ -320,6 +320,13 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
             </div>
           </div>
         </div>
+
+        {isAuthenticated && user && (
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            <span className="text-[10px] font-oswald uppercase tracking-wider text-gray-500">Рейтинг</span>
+            <span className="text-xs font-oswald font-bold" style={{ color: '#a78bfa' }}>{user.online_rating ?? 50}</span>
+          </div>
+        )}
 
         {/* Timer */}
         <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>

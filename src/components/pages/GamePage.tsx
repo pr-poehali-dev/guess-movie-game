@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Movie, achievements } from '@/data/movies';
 import { useRoundBasedImages } from '@/hooks/useTmdbImages';
 import { GameStats } from '@/pages/Index';
+import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
 
 interface GamePageProps {
@@ -14,6 +15,7 @@ type GameState = 'playing' | 'answered' | 'gameover' | 'round-complete';
 const QUESTIONS_PER_ROUND = 10;
 
 export default function GamePage({ onFinish, stats }: GamePageProps) {
+  const { user, isAuthenticated } = useAuth();
   const { loading: moviesLoading, getNewBatch, resetUsed } = useRoundBasedImages();
   const [queue, setQueue] = useState<Movie[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -316,12 +318,23 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded" style={{
-            background: 'rgba(212,168,67,0.1)',
-            border: '1px solid rgba(212,168,67,0.25)',
-          }}>
-            <Icon name="Star" size={14} className="text-gold" />
-            <span className="text-gold font-bold font-oswald">{totalScore}</span>
+          <div className="flex items-center gap-2">
+            {isAuthenticated && user && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded" style={{
+                background: 'rgba(212,168,67,0.06)',
+                border: '1px solid rgba(212,168,67,0.15)',
+              }}>
+                <Icon name="Trophy" size={12} className="text-gold" />
+                <span className="text-gold font-bold font-oswald text-xs">{(user.solo_rating || 0) + totalScore}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-3 py-1 rounded" style={{
+              background: 'rgba(212,168,67,0.1)',
+              border: '1px solid rgba(212,168,67,0.25)',
+            }}>
+              <Icon name="Star" size={14} className="text-gold" />
+              <span className="text-gold font-bold font-oswald">{totalScore}</span>
+            </div>
           </div>
         </div>
 
