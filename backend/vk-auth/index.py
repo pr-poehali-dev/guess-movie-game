@@ -119,14 +119,15 @@ def login_with_token(body):
         'access_token': access_token,
         'client_id': VK_APP_ID,
     })
+    print(f"[LOGIN] user_info response: {user_info}")
 
-    uid = user_info.get('user_id') or vk_user_id
-    first_name = user_info.get('first_name', '')
-    last_name = user_info.get('last_name', '')
-    photo_url = user_info.get('avatar', '')
+    user_data = user_info.get('user', user_info)
+    uid = user_data.get('user_id') or user_info.get('user_id') or vk_user_id
+    first_name = user_data.get('first_name', '') or user_info.get('first_name', '')
+    last_name = user_data.get('last_name', '') or user_info.get('last_name', '')
+    photo_url = user_data.get('avatar', '') or user_data.get('photo_200', '') or user_info.get('avatar', '')
 
     if not uid:
-        print(f"[LOGIN] user_info error: {user_info}")
         return resp(400, {'error': 'Не удалось получить данные пользователя'})
 
     return save_user_and_session(int(uid), first_name, last_name, photo_url, access_token)
