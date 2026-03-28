@@ -127,21 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const deviceId = params.get('device_id');
+    const state = params.get('state');
 
     if (!code || !deviceId) return false;
 
     processingRef.current = true;
-    const VKID = getVKID();
 
     try {
-      if (!VKID) throw new Error('VK ID SDK not loaded');
-      initVKID();
-      const tokenData = await VKID.Auth.exchangeCode(code, deviceId);
-      console.log('[VK AUTH] exchangeCode result keys:', Object.keys(tokenData));
-      const token = tokenData.access_token || tokenData.accessToken;
-      const userId = tokenData.user_id || tokenData.userId;
-      console.log('[VK AUTH] token exists:', !!token, 'userId:', userId);
-      await loginWithToken(token, userId);
+      const data = await apiCall('exchange_code', {
+        code,
+        device_id: deviceId,
+        state: state || '',
+        redirect_uri: window.location.origin,
+      });
+      localStorage.setItem(SESSION_KEY, data.session_token);
+      setUser(data.user);
       window.history.replaceState({}, '', window.location.pathname);
       return true;
     } catch {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       processingRef.current = false;
     }
-  }, [loginWithToken]);
+  }, []);
 
   useEffect(() => {
     initVKID();

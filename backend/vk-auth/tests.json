@@ -7,6 +7,15 @@
       "expectedStatus": 200
     },
     {
+      "name": "Exchange code - missing params",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "exchange_code"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Login with token - missing token",
       "method": "POST",
       "path": "/",
