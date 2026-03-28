@@ -21,6 +21,8 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onReady, onLe
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
   const answerSentRef = useRef(false);
+  const [readyTimer, setReadyTimer] = useState(30);
+  const readyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [frozenQuestion, setFrozenQuestion] = useState<RoomState['question'] | null>(null);
   const prevQuestionRef = useRef<RoomState['question'] | null>(null);
   const [contentVisible, setContentVisible] = useState(true);
@@ -74,8 +76,30 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onReady, onLe
   useEffect(() => {
     return () => {
       if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+      if (readyTimerRef.current) clearInterval(readyTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (roomState.status === 'ready_check') {
+      setReadyTimer(30);
+      if (readyTimerRef.current) clearInterval(readyTimerRef.current);
+      readyTimerRef.current = setInterval(() => {
+        setReadyTimer(prev => {
+          if (prev <= 1) {
+            if (readyTimerRef.current) clearInterval(readyTimerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (readyTimerRef.current) {
+        clearInterval(readyTimerRef.current);
+        readyTimerRef.current = null;
+      }
+    }
+  }, [roomState.status]);
 
   const handleAnswer = (index: number) => {
     if (selectedAnswer !== null || answerSentRef.current || showResult) return;
@@ -181,9 +205,14 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onReady, onLe
           <h2 className="font-playfair text-3xl font-bold text-gradient-gold mb-2">
             Соперник найден!
           </h2>
-          <p className="text-gray-500 font-oswald font-light text-sm mb-8">
+          <p className="text-gray-500 font-oswald font-light text-sm mb-2">
             Подтвердите готовность к игре
           </p>
+          <div className="mb-6">
+            <span className="font-oswald text-sm" style={{ color: readyTimer <= 10 ? '#f87171' : '#666' }}>
+              {readyTimer > 0 ? `0:${readyTimer.toString().padStart(2, '0')}` : 'Время вышло'}
+            </span>
+          </div>
 
           <div className="card-cinema rounded p-6 mb-6">
             <div className="grid grid-cols-3 gap-4 items-center">
@@ -257,6 +286,31 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onReady, onLe
             className="mt-4 py-3 px-8 text-sm text-gray-500 hover:text-red-400 transition-colors font-oswald tracking-wider"
           >
             Отменить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (roomState.status === 'finished' && roomState.winner === 'timeout') {
+    return (
+      <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
+        <div className="max-w-md w-full text-center animate-fade-in-up">
+          <div className="text-5xl mb-6">⏰</div>
+          <h2 className="font-playfair text-3xl font-bold text-gradient-gold mb-2">
+            Время вышло
+          </h2>
+          <p className="text-gray-500 font-oswald font-light text-sm mb-8">
+            Не все игроки подтвердили готовность
+          </p>
+          <button
+            onClick={onLeave}
+            className="btn-cinema w-full py-3 rounded-sm text-sm"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Icon name="Home" size={16} />
+              В меню
+            </span>
           </button>
         </div>
       </div>

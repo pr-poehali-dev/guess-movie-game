@@ -240,6 +240,27 @@ def get_room_state(room_id, player_id):
             conn2.close()
             status = 'finished'
 
+    if status == 'ready_check':
+        cur2 = conn.cursor()
+        cur2.execute(
+            f"SELECT updated_at FROM {SCHEMA}.game_rooms WHERE id = %s",
+            (room_id,)
+        )
+        rc_row = cur2.fetchone()
+        cur2.close()
+        if rc_row and rc_row[0] and (datetime.utcnow() - rc_row[0]).total_seconds() > 30:
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute(
+                f"UPDATE {SCHEMA}.game_rooms SET status = 'finished', winner = 'timeout' WHERE id = %s AND status = 'ready_check'",
+                (room_id,)
+            )
+            conn2.commit()
+            cur2.close()
+            conn2.close()
+            status = 'finished'
+            winner = 'timeout'
+
     i_answered = (
         (len(p1_ans) > cur_q if my_number == 1 else len(p2_ans) > cur_q)
         if status == 'playing' else False
