@@ -1,4 +1,3 @@
-"""Авторизация через ВКонтакте — обмен кода на токен, управление сессиями и статистикой пользователей"""
 import json
 import os
 import secrets
@@ -34,14 +33,12 @@ def resp(status, body):
 
 
 def vk_api_get(url):
-    """Выполняет GET-запрос к VK API и возвращает распарсенный JSON"""
     req = urllib.request.Request(url)
     with urllib.request.urlopen(req, timeout=10) as response:
         return json.loads(response.read().decode('utf-8'))
 
 
 def validate_session(body):
-    """Проверяет session_token и возвращает (user_id, conn, cur) или None"""
     session_token = body.get('session_token')
     if not session_token:
         return None
@@ -62,68 +59,32 @@ def validate_session(body):
     return row[0], conn, cur
 
 
-def get_auth_url(body):
-    """Возвращает URL для авторизации через ВКонтакте"""
-    redirect_uri = body.get('redirect_uri')
-    if not redirect_uri:
-        return resp(400, {'error': 'redirect_uri обязателен'})
+def login_with_token(body):
+    access_token = body.get('access_token')
+    if not access_token:
+        return resp(400, {'error': 'access_token обязателен'})
 
-    redirect_uri = redirect_uri.rstrip('/')
-    encoded_uri = urllib.parse.quote(redirect_uri, safe='')
-    print(f"[VK AUTH] app_id={VK_APP_ID}, redirect_uri={redirect_uri}")
-    auth_url = (
-        f"https://oauth.vk.com/authorize?client_id={VK_APP_ID}"
-        f"&display=page&redirect_uri={encoded_uri}"
-        f"&scope=friends&response_type=code&v=5.131"
-    )
-    return resp(200, {'auth_url': auth_url})
-
-
-def callback(body):
-    """Обменивает код авторизации на токен, получает профиль и создаёт сессию"""
-    code = body.get('code')
-    redirect_uri = body.get('redirect_uri')
-    if not code or not redirect_uri:
-        return resp(400, {'error': 'code и redirect_uri обязательны'})
-
-    # Обмениваем код на access_token
-    encoded_uri = urllib.parse.quote(redirect_uri, safe='')
-    token_url = (
-        f"https://oauth.vk.com/access_token?client_id={VK_APP_ID}"
-        f"&client_secret={VK_APP_SECRET}"
-        f"&redirect_uri={encoded_uri}&code={code}"
-    )
-    token_data = vk_api_get(token_url)
-
-    if 'error' in token_data:
-        return resp(400, {'error': token_data.get('error_description', 'Ошибка получения токена')})
-
-    access_token = token_data['access_token']
-    vk_user_id = token_data['user_id']
-    expires_in = token_data.get('expires_in', 86400)
-
-    # Получаем информацию о пользователе
     user_url = (
-        f"https://api.vk.com/method/users.get?user_ids={vk_user_id}"
-        f"&fields=photo_200,first_name,last_name"
+        f"https://api.vk.com/method/users.get"
+        f"?fields=photo_200,first_name,last_name"
         f"&access_token={access_token}&v=5.131"
     )
     user_data = vk_api_get(user_url)
 
     if 'error' in user_data:
-        return resp(400, {'error': 'Ошибка получения профиля VK'})
+        return resp(400, {'error': 'Невалидный access_token или ошибка VK API'})
 
     vk_user = user_data['response'][0]
+    vk_user_id = vk_user['id']
     first_name = vk_user.get('first_name', '')
     last_name = vk_user.get('last_name', '')
     photo_url = vk_user.get('photo_200', '')
 
-    token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    token_expires_at = datetime.utcnow() + timedelta(days=1)
 
     conn = get_conn()
     cur = conn.cursor()
 
-    # Upsert пользователя
     cur.execute(
         f"""INSERT INTO {SCHEMA}.users (vk_id, first_name, last_name, photo_url, access_token, token_expires_at, updated_at)
         VALUES (%s, %s, %s, %s, %s, %s, NOW())
@@ -140,7 +101,6 @@ def callback(body):
     user_row = cur.fetchone()
     user_id, db_vk_id, db_first, db_last, db_photo = user_row
 
-    # Создаём сессию
     session_token = secrets.token_hex(32)
     session_expires = datetime.utcnow() + timedelta(days=30)
 
@@ -166,7 +126,6 @@ def callback(body):
 
 
 def me(body):
-    """Возвращает профиль и статистику текущего пользователя по session_token"""
     result = validate_session(body)
     if not result:
         return resp(401, {'error': 'Сессия не найдена или истекла'})
@@ -206,7 +165,6 @@ def me(body):
 
 
 def logout(body):
-    """Инвалидирует сессию, устанавливая expires_at в текущее время"""
     session_token = body.get('session_token')
     if not session_token:
         return resp(400, {'error': 'session_token обязателен'})
@@ -226,7 +184,6 @@ def logout(body):
 
 
 def update_stats(body):
-    """Обновляет статистику пользователя после игры и записывает историю"""
     result = validate_session(body)
     if not result:
         return resp(401, {'error': 'Сессия не найдена или истекла'})
@@ -244,7 +201,6 @@ def update_stats(body):
         conn.close()
         return resp(400, {'error': 'result должен быть win, loss или draw'})
 
-    # Определяем какое поле инкрементировать
     result_column = {'win': 'wins', 'loss': 'losses', 'draw': 'draws'}[game_result]
 
     cur.execute(
@@ -261,7 +217,6 @@ def update_stats(body):
     )
     user_row = cur.fetchone()
 
-    # Записываем в историю игр
     cur.execute(
         f"""INSERT INTO {SCHEMA}.game_history
         (user_id, score, result, game_type, opponent_name, room_id)
@@ -291,14 +246,12 @@ def update_stats(body):
 
 
 def friends(body):
-    """Получает список друзей ВК и показывает, кто из них играет"""
     result = validate_session(body)
     if not result:
         return resp(401, {'error': 'Сессия не найдена или истекла'})
 
     user_id, conn, cur = result
 
-    # Получаем access_token пользователя
     cur.execute(
         f"SELECT access_token FROM {SCHEMA}.users WHERE id = %s",
         (user_id,)
@@ -311,7 +264,6 @@ def friends(body):
 
     access_token = token_row[0]
 
-    # Запрашиваем друзей из VK API
     friends_url = (
         f"https://api.vk.com/method/friends.get?"
         f"fields=photo_200,first_name,last_name"
@@ -330,10 +282,8 @@ def friends(body):
         conn.close()
         return resp(200, {'friends': []})
 
-    # Собираем vk_id друзей
     friend_vk_ids = [f['id'] for f in vk_friends]
 
-    # Ищем зарегистрированных друзей в нашей базе
     placeholders = ','.join(['%s'] * len(friend_vk_ids))
     cur.execute(
         f"""SELECT vk_id, total_score, games_played, best_score, wins, losses, draws, perfect_rounds
@@ -344,7 +294,6 @@ def friends(body):
     cur.close()
     conn.close()
 
-    # Создаём словарь зарегистрированных игроков
     players_map = {}
     for row in player_rows:
         players_map[row[0]] = {
@@ -357,7 +306,6 @@ def friends(body):
             'perfect_rounds': row[7] or 0,
         }
 
-    # Формируем результат
     friends_list = []
     for f in vk_friends:
         vk_id = f['id']
@@ -375,7 +323,6 @@ def friends(body):
 
 
 def handler(event: dict, context) -> dict:
-    """Обработчик VK OAuth — авторизация, сессии, статистика и друзья"""
     if event.get('httpMethod') == 'OPTIONS':
         return resp(200, {})
 
@@ -387,10 +334,8 @@ def handler(event: dict, context) -> dict:
 
     action = body.get('action', '')
 
-    if action == 'get_auth_url':
-        return get_auth_url(body)
-    elif action == 'callback':
-        return callback(body)
+    if action == 'login_with_token':
+        return login_with_token(body)
     elif action == 'me':
         return me(body)
     elif action == 'logout':

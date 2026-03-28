@@ -1,8 +1,23 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import * as VKID from '@vkid/sdk';
 import funcUrls from '../../backend/func2url.json';
 
 const API_URL = (funcUrls as Record<string, string>)['vk-auth'] || '';
 const SESSION_KEY = 'kinovikto_session';
+
+let vkidInitialized = false;
+
+function initVKID() {
+  if (vkidInitialized) return;
+  vkidInitialized = true;
+  VKID.Config.init({
+    app: 54512733,
+    redirectUrl: window.location.origin,
+    responseMode: VKID.ConfigResponseMode.Redirect,
+    source: VKID.ConfigSource.LOWCODE,
+    scope: '',
+  });
+}
 
 export interface VkUser {
   id: number;
@@ -49,7 +64,6 @@ interface AuthContextValue {
   loading: boolean;
   login: () => void;
   logout: () => Promise<void>;
-  handleCallback: (code: string) => Promise<boolean>;
   updateStats: (data: UpdateStatsData) => Promise<void>;
   fetchFriends: () => Promise<VkFriend[]>;
   isAuthenticated: boolean;
@@ -73,7 +87,6 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
   login: () => {},
   logout: async () => {},
-  handleCallback: async () => false,
   updateStats: async () => {},
   fetchFriends: async () => [],
   isAuthenticated: false,
@@ -82,33 +95,60 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<VkUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const processingRef = useRef(false);
 
   const getSessionToken = () => localStorage.getItem(SESSION_KEY);
 
-  const handleCallback = useCallback(async (code: string): Promise<boolean> => {
-    const data = await apiCall('callback', {
-      code,
-      redirect_uri: window.location.origin,
+  const loginWithToken = useCallback(async (accessToken: string, vkUserId?: number) => {
+    const data = await apiCall('login_with_token', {
+      access_token: accessToken,
+      vk_user_id: vkUserId,
     });
     localStorage.setItem(SESSION_KEY, data.session_token);
     setUser(data.user);
-    return true;
   }, []);
 
+  const handleVKCallback = useCallback(async () => {
+    if (processingRef.current) return false;
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const deviceId = params.get('device_id');
+
+    if (!code || !deviceId) return false;
+
+    processingRef.current = true;
+
+    try {
+      const tokenData = await VKID.Auth.exchangeCode(code, deviceId);
+      await loginWithToken(tokenData.access_token, tokenData.user_id);
+      window.history.replaceState({}, '', window.location.pathname);
+      return true;
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+      window.history.replaceState({}, '', window.location.pathname);
+      return false;
+    } finally {
+      processingRef.current = false;
+    }
+  }, [loginWithToken]);
+
   useEffect(() => {
+    initVKID();
+
     const init = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
+      const deviceId = params.get('device_id');
 
-      if (code) {
-        try {
-          await handleCallback(code);
-          window.history.replaceState({}, '', window.location.pathname);
-        } catch (_) {
-          localStorage.removeItem(SESSION_KEY);
-        }
+      if (code && deviceId) {
+        await handleVKCallback();
         setLoading(false);
         return;
+      }
+
+      if (code && !deviceId) {
+        window.history.replaceState({}, '', window.location.pathname);
       }
 
       const token = getSessionToken();
@@ -120,21 +160,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const data = await apiCall('me', { session_token: token });
         setUser(data.user);
-      } catch (_) {
+      } catch {
         localStorage.removeItem(SESSION_KEY);
       }
       setLoading(false);
     };
 
     init();
-  }, [handleCallback]);
+  }, [handleVKCallback]);
 
   const login = useCallback(() => {
-    apiCall('get_auth_url', {
-      redirect_uri: window.location.origin,
-    }).then((data) => {
-      window.location.href = data.auth_url;
-    });
+    initVKID();
+    VKID.Auth.login();
   }, []);
 
   const logout = useCallback(async () => {
@@ -168,7 +205,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
-    handleCallback,
     updateStats,
     fetchFriends,
     isAuthenticated: !!user,

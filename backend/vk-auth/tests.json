@@ -7,12 +7,12 @@
       "expectedStatus": 200
     },
     {
-      "name": "Get auth URL",
+      "name": "Login with token - missing token",
       "method": "POST",
       "path": "/",
-      "body": {"action": "get_auth_url", "redirect_uri": "https://example.com/callback"},
-      "expectedStatus": 200,
-      "expectedBody": {"auth_url": "string"},
+      "body": {"action": "login_with_token"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
     },
     {
@@ -21,6 +21,15 @@
       "path": "/",
       "body": {"action": "me"},
       "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unknown action",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "unknown_action"},
+      "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
     }
