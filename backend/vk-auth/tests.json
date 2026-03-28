@@ -34,12 +34,21 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Leaderboard",
+      "name": "Leaderboard solo",
       "method": "POST",
       "path": "/",
-      "body": {"action": "leaderboard"},
+      "body": {"action": "leaderboard", "rating_type": "solo"},
       "expectedStatus": 200,
-      "expectedBody": {},
+      "expectedBody": {"rating_type": "solo"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Leaderboard online",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "leaderboard", "rating_type": "online"},
+      "expectedStatus": 200,
+      "expectedBody": {"rating_type": "online"},
       "bodyMatcher": "partial"
     },
     {

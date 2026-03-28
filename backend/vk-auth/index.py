@@ -186,7 +186,8 @@ def me(body):
     cur.execute(
         f"""SELECT id, vk_id, first_name, last_name, photo_url,
             total_score, games_played, best_score,
-            wins, losses, draws, perfect_rounds
+            wins, losses, draws, perfect_rounds,
+            solo_rating, online_rating
         FROM {SCHEMA}.users WHERE id = %s""",
         (user_id,)
     )
@@ -211,6 +212,8 @@ def me(body):
             'losses': row[9] or 0,
             'draws': row[10] or 0,
             'perfect_rounds': row[11] or 0,
+            'solo_rating': row[12] or 0,
+            'online_rating': row[13] or 50,
         }
     })
 
@@ -235,6 +238,7 @@ def logout(body):
 
 
 def update_stats(body):
+    """Обновление статистики после завершения игры с двумя типами рейтинга"""
     result = validate_session(body)
     if not result:
         return resp(401, {'error': 'Сессия не найдена или истекла'})
@@ -246,6 +250,7 @@ def update_stats(body):
     game_type = body.get('game_type', 'solo')
     opponent_name = body.get('opponent_name')
     room_id = body.get('room_id')
+    winner_lives = body.get('winner_lives', 0)
 
     if game_result not in ('win', 'loss', 'draw'):
         cur.close()
@@ -254,18 +259,45 @@ def update_stats(body):
 
     result_column = {'win': 'wins', 'loss': 'losses', 'draw': 'draws'}[game_result]
 
-    cur.execute(
-        f"""UPDATE {SCHEMA}.users SET
-            total_score = COALESCE(total_score, 0) + %s,
-            games_played = COALESCE(games_played, 0) + 1,
-            best_score = GREATEST(COALESCE(best_score, 0), %s),
-            {result_column} = COALESCE({result_column}, 0) + 1,
-            updated_at = NOW()
-        WHERE id = %s
-        RETURNING id, vk_id, first_name, last_name, photo_url,
-            total_score, games_played, best_score, wins, losses, draws, perfect_rounds""",
-        (score, score, user_id)
-    )
+    if game_type == 'solo':
+        cur.execute(
+            f"""UPDATE {SCHEMA}.users SET
+                total_score = COALESCE(total_score, 0) + %s,
+                solo_rating = COALESCE(solo_rating, 0) + %s,
+                games_played = COALESCE(games_played, 0) + 1,
+                best_score = GREATEST(COALESCE(best_score, 0), %s),
+                {result_column} = COALESCE({result_column}, 0) + 1,
+                updated_at = NOW()
+            WHERE id = %s
+            RETURNING id, vk_id, first_name, last_name, photo_url,
+                total_score, games_played, best_score, wins, losses, draws, perfect_rounds,
+                solo_rating, online_rating""",
+            (score, score, score, user_id)
+        )
+    else:
+        rating_change = int(winner_lives) if winner_lives else 0
+        if game_result == 'win':
+            online_expr = f"GREATEST(COALESCE(online_rating, 50) + {rating_change}, 0)"
+        elif game_result == 'loss':
+            online_expr = f"GREATEST(COALESCE(online_rating, 50) - {rating_change}, 0)"
+        else:
+            online_expr = "COALESCE(online_rating, 50)"
+
+        cur.execute(
+            f"""UPDATE {SCHEMA}.users SET
+                total_score = COALESCE(total_score, 0) + %s,
+                online_rating = {online_expr},
+                games_played = COALESCE(games_played, 0) + 1,
+                best_score = GREATEST(COALESCE(best_score, 0), %s),
+                {result_column} = COALESCE({result_column}, 0) + 1,
+                updated_at = NOW()
+            WHERE id = %s
+            RETURNING id, vk_id, first_name, last_name, photo_url,
+                total_score, games_played, best_score, wins, losses, draws, perfect_rounds,
+                solo_rating, online_rating""",
+            (score, score, user_id)
+        )
+
     user_row = cur.fetchone()
 
     cur.execute(
@@ -292,20 +324,30 @@ def update_stats(body):
             'losses': user_row[9] or 0,
             'draws': user_row[10] or 0,
             'perfect_rounds': user_row[11] or 0,
+            'solo_rating': user_row[12] or 0,
+            'online_rating': user_row[13] or 50,
         }
     })
 
 
 def leaderboard(body):
+    """Таблица лидеров с двумя типами рейтинга: solo и online"""
+    rating_type = body.get('rating_type', 'solo')
     conn = get_conn()
     cur = conn.cursor()
 
+    if rating_type == 'online':
+        order_col = 'online_rating'
+    else:
+        order_col = 'solo_rating'
+
     cur.execute(
         f"""SELECT id, vk_id, first_name, last_name, photo_url,
-            total_score, games_played, best_score, wins, losses, draws
+            total_score, games_played, best_score, wins, losses, draws,
+            solo_rating, online_rating
         FROM {SCHEMA}.users
         WHERE games_played > 0
-        ORDER BY total_score DESC
+        ORDER BY {order_col} DESC
         LIMIT 50"""
     )
 
@@ -328,9 +370,11 @@ def leaderboard(body):
             'wins': row[8] or 0,
             'losses': row[9] or 0,
             'draws': row[10] or 0,
+            'solo_rating': row[11] or 0,
+            'online_rating': row[12] or 50,
         })
 
-    return resp(200, {'players': players})
+    return resp(200, {'players': players, 'rating_type': rating_type})
 
 
 def handler(event: dict, context) -> dict:

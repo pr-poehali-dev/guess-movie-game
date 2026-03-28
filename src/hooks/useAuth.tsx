@@ -45,6 +45,8 @@ export interface VkUser {
   losses: number;
   draws: number;
   perfect_rounds: number;
+  solo_rating: number;
+  online_rating: number;
 }
 
 export interface VkFriend {
@@ -70,6 +72,7 @@ interface UpdateStatsData {
   game_type: string;
   opponent_name?: string;
   room_id?: string;
+  winner_lives?: number;
 }
 
 interface AuthContextValue {

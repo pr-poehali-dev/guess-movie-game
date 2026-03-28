@@ -18,6 +18,8 @@ interface LeaderboardPlayer {
   wins: number;
   losses: number;
   draws: number;
+  solo_rating: number;
+  online_rating: number;
 }
 
 export default function ProfilePage() {
@@ -25,21 +27,22 @@ export default function ProfilePage() {
   const [leaders, setLeaders] = useState<LeaderboardPlayer[]>([]);
   const [loadingLeaders, setLoadingLeaders] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'leaders'>('stats');
+  const [ratingType, setRatingType] = useState<'solo' | 'online'>('solo');
 
   useEffect(() => {
-    if (activeTab === 'leaders' && leaders.length === 0) {
+    if (activeTab === 'leaders') {
       setLoadingLeaders(true);
       fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'leaderboard' }),
+        body: JSON.stringify({ action: 'leaderboard', rating_type: ratingType }),
       })
         .then(r => r.json())
         .then(data => setLeaders(data.players || []))
         .catch(() => {})
         .finally(() => setLoadingLeaders(false));
     }
-  }, [activeTab, leaders.length]);
+  }, [activeTab, ratingType]);
 
   if (!user) return null;
 
@@ -109,10 +112,23 @@ export default function ProfilePage() {
         {activeTab === 'stats' && (
           <div className="space-y-4 animate-fade-in-up delay-200">
             <div className="grid grid-cols-2 gap-4">
+              <div className="card-cinema p-5 rounded text-center" style={{ border: '1px solid rgba(212,168,67,0.2)', background: 'rgba(212,168,67,0.04)' }}>
+                <div className="text-xs text-gray-500 font-oswald uppercase tracking-wider mb-1">Соло рейтинг</div>
+                <div className="text-gold font-playfair font-bold text-3xl">{user.solo_rating || 0}</div>
+                <div className="text-gray-600 text-xs font-oswald mt-1">1 фильм = 1 очко</div>
+              </div>
+              <div className="card-cinema p-5 rounded text-center" style={{ border: '1px solid rgba(147,51,234,0.2)', background: 'rgba(147,51,234,0.04)' }}>
+                <div className="text-xs text-gray-500 font-oswald uppercase tracking-wider mb-1">Сетевой рейтинг</div>
+                <div className="font-playfair font-bold text-3xl" style={{ color: '#a78bfa' }}>{user.online_rating ?? 50}</div>
+                <div className="text-gray-600 text-xs font-oswald mt-1">±жизни победителя</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Всего очков', value: user.total_score, icon: 'Star' },
                 { label: 'Игр сыграно', value: user.games_played, icon: 'Gamepad2' },
                 { label: 'Лучший результат', value: user.best_score, icon: 'Trophy' },
+                { label: 'Всего очков', value: user.total_score, icon: 'Star' },
                 { label: 'Процент побед', value: `${winRate}%`, icon: 'TrendingUp' },
               ].map((item, i) => (
                 <div key={i} className="card-cinema p-5 rounded text-center">
@@ -148,6 +164,29 @@ export default function ProfilePage() {
 
         {activeTab === 'leaders' && (
           <div className="space-y-3 animate-fade-in-up delay-200">
+            <div className="flex gap-2 mb-4">
+              {(['solo', 'online'] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setRatingType(type)}
+                  className="flex-1 py-2 px-3 rounded-sm text-xs font-oswald tracking-wider transition-all"
+                  style={{
+                    background: ratingType === type
+                      ? type === 'solo' ? 'rgba(212,168,67,0.12)' : 'rgba(147,51,234,0.12)'
+                      : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${ratingType === type
+                      ? type === 'solo' ? 'rgba(212,168,67,0.4)' : 'rgba(147,51,234,0.4)'
+                      : 'rgba(255,255,255,0.08)'}`,
+                    color: ratingType === type
+                      ? type === 'solo' ? '#d4a843' : '#a78bfa'
+                      : '#666',
+                  }}
+                >
+                  {type === 'solo' ? '🎬 Соло' : '⚔️ Сетевой'}
+                </button>
+              ))}
+            </div>
+
             {loadingLeaders ? (
               <div className="text-center py-12">
                 <div className="text-5xl mb-4 animate-pulse">🏆</div>
@@ -164,34 +203,36 @@ export default function ProfilePage() {
             ) : (
               leaders.map(player => {
                 const isMe = player.id === user.id;
+                const ratingValue = ratingType === 'solo' ? player.solo_rating : player.online_rating;
+                const ratingColor = ratingType === 'solo' ? '#d4a843' : '#a78bfa';
                 return (
                   <div
                     key={player.id}
                     className="card-cinema rounded p-4 flex items-center gap-3"
-                    style={isMe ? { border: '1px solid rgba(212,168,67,0.4)', background: 'rgba(212,168,67,0.06)' } : {}}
+                    style={isMe ? { border: `1px solid ${ratingType === 'solo' ? 'rgba(212,168,67,0.4)' : 'rgba(147,51,234,0.4)'}`, background: ratingType === 'solo' ? 'rgba(212,168,67,0.06)' : 'rgba(147,51,234,0.06)' } : {}}
                   >
-                    <div className="w-8 text-center font-playfair font-bold text-lg" style={{ color: player.rank <= 3 ? '#d4a843' : '#666' }}>
+                    <div className="w-8 text-center font-playfair font-bold text-lg" style={{ color: player.rank <= 3 ? ratingColor : '#666' }}>
                       {medalEmoji(player.rank)}
                     </div>
                     {player.photo_url ? (
-                      <img src={player.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: isMe ? '2px solid rgba(212,168,67,0.5)' : '2px solid rgba(255,255,255,0.08)' }} />
+                      <img src={player.photo_url} alt="" className="w-10 h-10 rounded-full object-cover" style={{ border: isMe ? `2px solid ${ratingColor}80` : '2px solid rgba(255,255,255,0.08)' }} />
                     ) : (
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-gold font-bold" style={{ background: 'rgba(212,168,67,0.12)' }}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold" style={{ background: `${ratingColor}20`, color: ratingColor }}>
                         {player.first_name[0] || '?'}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-white font-oswald text-sm truncate">
                         {player.first_name} {player.last_name}
-                        {isMe && <span className="text-gold ml-1">(вы)</span>}
+                        {isMe && <span style={{ color: ratingColor }} className="ml-1">(вы)</span>}
                       </div>
                       <div className="text-gray-500 text-xs font-oswald font-light">
                         {player.games_played} игр · {player.wins} побед
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-gold font-playfair font-bold">{player.total_score}</div>
-                      <div className="text-gray-600 text-xs font-oswald">очков</div>
+                      <div className="font-playfair font-bold" style={{ color: ratingColor }}>{ratingValue}</div>
+                      <div className="text-gray-600 text-xs font-oswald">рейтинг</div>
                     </div>
                   </div>
                 );

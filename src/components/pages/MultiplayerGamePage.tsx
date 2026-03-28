@@ -103,15 +103,21 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
       statsSentRef.current = true;
       const iWon = (isMe1 && roomState.winner === 'player1') || (!isMe1 && roomState.winner === 'player2');
       const isDraw = roomState.winner === 'draw';
+      const winnerLivesCount = roomState.winner === 'player1'
+        ? roomState.player1_lives
+        : roomState.winner === 'player2'
+          ? roomState.player2_lives
+          : 0;
       updateServerStats({
         score: myScore,
         result: isDraw ? 'draw' : iWon ? 'win' : 'loss',
         game_type: 'multiplayer',
         opponent_name: opponentName,
         room_id: roomId,
+        winner_lives: winnerLivesCount,
       }).catch(() => {});
     }
-  }, [roomState.status, roomState.winner, isAuthenticated, isMe1, myScore, opponentName, roomId, updateServerStats]);
+  }, [roomState.status, roomState.winner, isAuthenticated, isMe1, myScore, opponentName, roomId, updateServerStats, roomState.player1_lives, roomState.player2_lives]);
 
   if (roomState.status === 'waiting') {
     return (
@@ -166,6 +172,12 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
   if (roomState.status === 'finished') {
     const iWon = (isMe1 && roomState.winner === 'player1') || (!isMe1 && roomState.winner === 'player2');
     const isDraw = roomState.winner === 'draw';
+    const winnerLivesCount = roomState.winner === 'player1'
+      ? roomState.player1_lives
+      : roomState.winner === 'player2'
+        ? roomState.player2_lives
+        : 0;
+    const ratingChange = isDraw ? 0 : iWon ? winnerLivesCount : -winnerLivesCount;
 
     return (
       <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
@@ -176,9 +188,19 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           <h2 className="font-playfair text-4xl font-bold text-gradient-gold mb-2">
             {isDraw ? 'Ничья!' : iWon ? 'Победа!' : 'Поражение'}
           </h2>
-          <p className="text-gray-500 mb-8 font-oswald font-light">
+          <p className="text-gray-500 mb-4 font-oswald font-light">
             {isDraw ? 'Достойная битва!' : iWon ? 'Ты настоящий киноман!' : 'В следующий раз повезёт!'}
           </p>
+
+          {isAuthenticated && ratingChange !== 0 && (
+            <div className="mb-6 py-2 px-4 rounded-sm inline-block font-oswald text-sm tracking-wider" style={{
+              background: ratingChange > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
+              border: `1px solid ${ratingChange > 0 ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
+              color: ratingChange > 0 ? '#4ade80' : '#f87171',
+            }}>
+              Сетевой рейтинг: {ratingChange > 0 ? '+' : ''}{ratingChange}
+            </div>
+          )}
 
           <div className="card-cinema rounded p-6 mb-8">
             <div className="grid grid-cols-3 gap-2 mb-4">
