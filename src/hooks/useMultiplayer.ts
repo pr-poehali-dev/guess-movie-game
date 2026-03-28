@@ -40,6 +40,8 @@ export interface RoomState {
   opponent_answered: boolean;
   both_answered: boolean;
   ranked: boolean;
+  player1_ready: boolean;
+  player2_ready: boolean;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -246,6 +248,29 @@ export function useMultiplayer() {
     }
   }, [roomId, pollRoom]);
 
+  const setReady = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Player-Id': playerIdRef.current,
+        },
+        body: JSON.stringify({
+          action: 'ready',
+          room_id: roomId,
+          player_id: playerIdRef.current,
+        }),
+      });
+      if (roomId) {
+        pollRoom(roomId);
+      }
+    } catch {
+      // silent
+    }
+  }, [roomId, pollRoom]);
+
   const findMatch = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -306,6 +331,7 @@ export function useMultiplayer() {
     createRoom,
     joinRoom,
     findMatch,
+    setReady,
     submitAnswer,
     leaveRoom,
     setError,

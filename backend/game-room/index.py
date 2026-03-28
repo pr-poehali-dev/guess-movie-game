@@ -116,10 +116,10 @@ def join_room(body):
     now = datetime.utcnow()
     cur.execute(
         f"""UPDATE {SCHEMA}.game_rooms
-        SET player2_id = %s, player2_name = %s, status = 'playing',
-            question_started_at = %s, updated_at = %s
+        SET player2_id = %s, player2_name = %s, status = 'ready_check',
+            updated_at = %s
         WHERE id = %s AND status = 'waiting'""",
-        (player_id, player_name, now, now, room_id)
+        (player_id, player_name, now, room_id)
     )
     conn.commit()
     cur.close()
@@ -145,7 +145,7 @@ def get_room_state(room_id, player_id):
         status, current_question, questions_data,
         player1_lives, player2_lives, player1_score, player2_score,
         player1_answers, player2_answers, question_started_at, winner,
-        created_at, ranked
+        created_at, ranked, player1_ready, player2_ready
         FROM {SCHEMA}.game_rooms WHERE id = %s""",
         (room_id,)
     )
@@ -157,7 +157,8 @@ def get_room_state(room_id, player_id):
 
     (rid, p1_id, p1_name, p2_id, p2_name, status, cur_q, q_data,
      p1_lives, p2_lives, p1_score, p2_score,
-     p1_answers, p2_answers, q_started, winner, created_at, is_ranked) = row
+     p1_answers, p2_answers, q_started, winner, created_at, is_ranked,
+     p1_ready, p2_ready) = row
 
     questions = json.loads(q_data) if q_data else []
     p1_ans = json.loads(p1_answers) if p1_answers else []
@@ -272,6 +273,8 @@ def get_room_state(room_id, player_id):
         'opponent_answered': opponent_answered,
         'both_answered': both_answered,
         'ranked': bool(is_ranked),
+        'player1_ready': bool(p1_ready),
+        'player2_ready': bool(p2_ready),
     })
 
 
@@ -573,6 +576,81 @@ def submit_answer(body, player_id):
     return resp(200, {'ok': True})
 
 
+def set_ready(body, player_id):
+    """Игрок подтверждает готовность. Когда оба готовы — игра стартует."""
+    room_id = body.get('room_id', '').upper().strip()
+    body_player_id = body.get('player_id', '')
+    effective_pid = player_id or body_player_id
+
+    if not room_id or not effective_pid:
+        return resp(400, {'error': 'Укажите room_id и player_id'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        f"""SELECT player1_id, player2_id, status, player1_ready, player2_ready
+        FROM {SCHEMA}.game_rooms WHERE id = %s FOR UPDATE""",
+        (room_id,)
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.commit()
+        cur.close()
+        conn.close()
+        return resp(404, {'error': 'Комната не найдена'})
+
+    p1_id, p2_id, status, p1_ready, p2_ready = row
+
+    if status != 'ready_check':
+        conn.commit()
+        cur.close()
+        conn.close()
+        return resp(400, {'error': 'Игра не в фазе подготовки'})
+
+    is_p1 = effective_pid == p1_id
+    is_p2 = effective_pid == p2_id
+
+    if not is_p1 and not is_p2:
+        conn.commit()
+        cur.close()
+        conn.close()
+        return resp(403, {'error': 'Вы не участник этой комнаты'})
+
+    if is_p1:
+        p1_ready = True
+    else:
+        p2_ready = True
+
+    if p1_ready and p2_ready:
+        now = datetime.utcnow()
+        cur.execute(
+            f"""UPDATE {SCHEMA}.game_rooms
+            SET player1_ready = TRUE, player2_ready = TRUE,
+                status = 'playing', question_started_at = %s, updated_at = %s
+            WHERE id = %s""",
+            (now, now, room_id)
+        )
+    else:
+        cur.execute(
+            f"""UPDATE {SCHEMA}.game_rooms
+            SET player1_ready = %s, player2_ready = %s, updated_at = %s
+            WHERE id = %s""",
+            (p1_ready, p2_ready, datetime.utcnow(), room_id)
+        )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return resp(200, {
+        'ok': True,
+        'player1_ready': p1_ready,
+        'player2_ready': p2_ready,
+        'started': p1_ready and p2_ready,
+    })
+
+
 def matchmaking(body):
     """Автопоиск соперника: подключает к свободной комнате или создаёт новую"""
     player_name = body.get('player_name', 'Игрок')
@@ -603,11 +681,11 @@ def matchmaking(body):
         now = datetime.utcnow()
         cur.execute(
             f"""UPDATE {SCHEMA}.game_rooms
-            SET player2_id = %s, player2_name = %s, status = 'playing',
-                question_started_at = %s, updated_at = %s
+            SET player2_id = %s, player2_name = %s, status = 'ready_check',
+                updated_at = %s
             WHERE id = %s AND status = 'waiting'
             RETURNING id""",
-            (player_id, player_name, now, now, room_id)
+            (player_id, player_name, now, room_id)
         )
         updated = cur.fetchone()
         conn.commit()
@@ -674,6 +752,8 @@ def handler(event, context):
             return join_room(body)
         elif action == 'answer':
             return submit_answer(body, player_id)
+        elif action == 'ready':
+            return set_ready(body, player_id)
         elif action == 'matchmaking':
             return matchmaking(body)
         else:

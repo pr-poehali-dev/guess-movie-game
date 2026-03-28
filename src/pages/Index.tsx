@@ -166,6 +166,7 @@ export default function Index() {
           <MultiplayerGamePage
             roomState={multiplayer.roomState}
             onAnswer={multiplayer.submitAnswer}
+            onReady={multiplayer.setReady}
             onLeave={handleMultiplayerLeave}
             roomId={multiplayer.roomId}
           />

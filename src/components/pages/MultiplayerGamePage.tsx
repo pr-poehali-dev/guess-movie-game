@@ -6,11 +6,12 @@ import Icon from '@/components/ui/icon';
 interface MultiplayerGamePageProps {
   roomState: RoomState;
   onAnswer: (answer: number) => void;
+  onReady: () => void;
   onLeave: () => void;
   roomId: string;
 }
 
-export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, roomId }: MultiplayerGamePageProps) {
+export default function MultiplayerGamePage({ roomState, onAnswer, onReady, onLeave, roomId }: MultiplayerGamePageProps) {
   const { isAuthenticated, updateStats: updateServerStats, user } = useAuth();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -161,6 +162,99 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           <button
             onClick={onLeave}
             className="py-3 px-8 text-sm text-gray-500 hover:text-gold transition-colors font-oswald tracking-wider border border-white/10 rounded-sm hover:border-gold/30"
+          >
+            Отменить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (roomState.status === 'ready_check') {
+    const myReady = isMe1 ? roomState.player1_ready : roomState.player2_ready;
+    const opponentReady = isMe1 ? roomState.player2_ready : roomState.player1_ready;
+
+    return (
+      <div className="min-h-screen pt-24 pb-16 px-6 flex items-center justify-center">
+        <div className="max-w-md w-full text-center animate-fade-in-up">
+          <div className="text-5xl mb-6">⚔️</div>
+          <h2 className="font-playfair text-3xl font-bold text-gradient-gold mb-2">
+            Соперник найден!
+          </h2>
+          <p className="text-gray-500 font-oswald font-light text-sm mb-8">
+            Подтвердите готовность к игре
+          </p>
+
+          <div className="card-cinema rounded p-6 mb-6">
+            <div className="grid grid-cols-3 gap-4 items-center">
+              <div className="text-center">
+                <div className="text-white font-oswald text-sm mb-2 truncate">{myName}</div>
+                <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-2xl transition-all duration-300" style={{
+                  background: myReady ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `2px solid ${myReady ? 'rgba(74,222,128,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                }}>
+                  {myReady ? '✅' : '⏳'}
+                </div>
+                <div className="text-xs font-oswald mt-2" style={{ color: myReady ? '#4ade80' : '#666' }}>
+                  {myReady ? 'Готов' : 'Не готов'}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <span className="text-gray-600 font-oswald text-lg">VS</span>
+              </div>
+
+              <div className="text-center">
+                <div className="text-white font-oswald text-sm mb-2 truncate">{opponentName}</div>
+                <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-2xl transition-all duration-300" style={{
+                  background: opponentReady ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `2px solid ${opponentReady ? 'rgba(74,222,128,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                }}>
+                  {opponentReady ? '✅' : '⏳'}
+                </div>
+                <div className="text-xs font-oswald mt-2" style={{ color: opponentReady ? '#4ade80' : '#666' }}>
+                  {opponentReady ? 'Готов' : 'Ожидание...'}
+                </div>
+              </div>
+            </div>
+
+            {roomState.ranked && (
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(147,51,234,0.15)' }}>
+                <span className="text-[10px] font-oswald uppercase tracking-wider" style={{ color: '#a78bfa' }}>
+                  Рейтинговая игра
+                </span>
+              </div>
+            )}
+          </div>
+
+          {!myReady ? (
+            <button
+              onClick={onReady}
+              className="w-full py-4 rounded-sm text-sm font-oswald tracking-wider font-bold transition-all"
+              style={{
+                background: 'linear-gradient(135deg, rgba(74,222,128,0.2), rgba(74,222,128,0.1))',
+                border: '1px solid rgba(74,222,128,0.4)',
+                color: '#4ade80',
+              }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Icon name="Check" size={18} />
+                Готов!
+              </span>
+            </button>
+          ) : (
+            <div className="py-4 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-green-400 text-sm font-oswald">Ждём соперника...</span>
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" style={{ animationDelay: '0.5s' }} />
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={onLeave}
+            className="mt-4 py-3 px-8 text-sm text-gray-500 hover:text-red-400 transition-colors font-oswald tracking-wider"
           >
             Отменить
           </button>
