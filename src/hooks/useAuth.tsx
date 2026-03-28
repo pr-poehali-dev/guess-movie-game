@@ -1,17 +1,30 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import * as VKID from '@vkid/sdk';
 import funcUrls from '../../backend/func2url.json';
 
 const API_URL = (funcUrls as Record<string, string>)['vk-auth'] || '';
 const SESSION_KEY = 'kinovikto_session';
+const VK_APP_ID = 54512733;
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    VKIDSDK?: any;
+  }
+}
 
 let vkidInitialized = false;
 
+function getVKID() {
+  return window.VKIDSDK;
+}
+
 function initVKID() {
   if (vkidInitialized) return;
+  const VKID = getVKID();
+  if (!VKID) return;
   vkidInitialized = true;
   VKID.Config.init({
-    app: 54512733,
+    app: VK_APP_ID,
     redirectUrl: window.location.origin,
     responseMode: VKID.ConfigResponseMode.Redirect,
     source: VKID.ConfigSource.LOWCODE,
@@ -118,8 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!code || !deviceId) return false;
 
     processingRef.current = true;
+    const VKID = getVKID();
 
     try {
+      if (!VKID) throw new Error('VK ID SDK not loaded');
+      initVKID();
       const tokenData = await VKID.Auth.exchangeCode(code, deviceId);
       await loginWithToken(tokenData.access_token, tokenData.user_id);
       window.history.replaceState({}, '', window.location.pathname);
@@ -170,6 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [handleVKCallback]);
 
   const login = useCallback(() => {
+    const VKID = getVKID();
+    if (!VKID) return;
     initVKID();
     VKID.Auth.login();
   }, []);
