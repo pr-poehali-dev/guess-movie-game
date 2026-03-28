@@ -111,27 +111,25 @@ def exchange_code(body):
 
 def login_with_token(body):
     access_token = body.get('access_token')
+    vk_user_id = body.get('vk_user_id')
     if not access_token:
         return resp(400, {'error': 'access_token обязателен'})
 
-    user_url = (
-        f"https://api.vk.com/method/users.get"
-        f"?fields=photo_200,first_name,last_name"
-        f"&access_token={access_token}&v=5.131"
-    )
-    user_data = vk_api_get(user_url)
+    user_info = vk_api_post('https://id.vk.com/oauth2/user_info', {
+        'access_token': access_token,
+        'client_id': VK_APP_ID,
+    })
 
-    if 'error' in user_data:
-        return resp(400, {'error': 'Невалидный access_token или ошибка VK API'})
+    uid = user_info.get('user_id') or vk_user_id
+    first_name = user_info.get('first_name', '')
+    last_name = user_info.get('last_name', '')
+    photo_url = user_info.get('avatar', '')
 
-    vk_user = user_data['response'][0]
-    return save_user_and_session(
-        vk_user['id'],
-        vk_user.get('first_name', ''),
-        vk_user.get('last_name', ''),
-        vk_user.get('photo_200', ''),
-        access_token,
-    )
+    if not uid:
+        print(f"[LOGIN] user_info error: {user_info}")
+        return resp(400, {'error': 'Не удалось получить данные пользователя'})
+
+    return save_user_and_session(int(uid), first_name, last_name, photo_url, access_token)
 
 
 def save_user_and_session(vk_user_id, first_name, last_name, photo_url, access_token):
