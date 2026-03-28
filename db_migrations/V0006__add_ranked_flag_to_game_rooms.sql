@@ -1,0 +1,2 @@
+ALTER TABLE t_p69129290_guess_movie_game.game_rooms
+ADD COLUMN ranked BOOLEAN NOT NULL DEFAULT FALSE;

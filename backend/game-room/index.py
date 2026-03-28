@@ -145,7 +145,7 @@ def get_room_state(room_id, player_id):
         status, current_question, questions_data,
         player1_lives, player2_lives, player1_score, player2_score,
         player1_answers, player2_answers, question_started_at, winner,
-        created_at
+        created_at, ranked
         FROM {SCHEMA}.game_rooms WHERE id = %s""",
         (room_id,)
     )
@@ -157,7 +157,7 @@ def get_room_state(room_id, player_id):
 
     (rid, p1_id, p1_name, p2_id, p2_name, status, cur_q, q_data,
      p1_lives, p2_lives, p1_score, p2_score,
-     p1_answers, p2_answers, q_started, winner, created_at) = row
+     p1_answers, p2_answers, q_started, winner, created_at, is_ranked) = row
 
     questions = json.loads(q_data) if q_data else []
     p1_ans = json.loads(p1_answers) if p1_answers else []
@@ -271,6 +271,7 @@ def get_room_state(room_id, player_id):
         'i_answered': i_answered,
         'opponent_answered': opponent_answered,
         'both_answered': both_answered,
+        'ranked': bool(is_ranked),
     })
 
 
@@ -587,6 +588,7 @@ def matchmaking(body):
     cur.execute(
         f"""SELECT id, player1_id FROM {SCHEMA}.game_rooms
         WHERE status = 'waiting'
+            AND ranked = TRUE
             AND player1_id != %s
             AND created_at > NOW() - INTERVAL '5 minutes'
         ORDER BY created_at ASC
@@ -625,8 +627,8 @@ def matchmaking(body):
 
     cur.execute(
         f"""INSERT INTO {SCHEMA}.game_rooms
-        (id, player1_id, player1_name, status, questions_data, current_question, movie_ids)
-        VALUES (%s, %s, %s, 'waiting', %s, 0, '')""",
+        (id, player1_id, player1_name, status, questions_data, current_question, movie_ids, ranked)
+        VALUES (%s, %s, %s, 'waiting', %s, 0, '', TRUE)""",
         (room_id, player_id, player_name, questions_json)
     )
     conn.commit()

@@ -114,10 +114,10 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
         game_type: 'multiplayer',
         opponent_name: opponentName,
         room_id: roomId,
-        winner_lives: winnerLivesCount,
+        winner_lives: roomState.ranked ? winnerLivesCount : 0,
       }).catch(() => {});
     }
-  }, [roomState.status, roomState.winner, isAuthenticated, isMe1, myScore, opponentName, roomId, updateServerStats, roomState.player1_lives, roomState.player2_lives]);
+  }, [roomState.status, roomState.winner, isAuthenticated, isMe1, myScore, opponentName, roomId, updateServerStats, roomState.player1_lives, roomState.player2_lives, roomState.ranked]);
 
   if (roomState.status === 'waiting') {
     return (
@@ -192,7 +192,7 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
             {isDraw ? 'Достойная битва!' : iWon ? 'Ты настоящий киноман!' : 'В следующий раз повезёт!'}
           </p>
 
-          {isAuthenticated && ratingChange !== 0 && (
+          {isAuthenticated && roomState.ranked && ratingChange !== 0 && (
             <div className="mb-6 py-2 px-4 rounded-sm inline-block font-oswald text-sm tracking-wider" style={{
               background: ratingChange > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
               border: `1px solid ${ratingChange > 0 ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
@@ -321,10 +321,15 @@ export default function MultiplayerGamePage({ roomState, onAnswer, onLeave, room
           </div>
         </div>
 
-        {isAuthenticated && user && (
+        {isAuthenticated && user && roomState.ranked && (
           <div className="flex items-center justify-center gap-1.5 mt-2">
             <span className="text-[10px] font-oswald uppercase tracking-wider text-gray-500">Рейтинг</span>
             <span className="text-xs font-oswald font-bold" style={{ color: '#a78bfa' }}>{user.online_rating ?? 50}</span>
+          </div>
+        )}
+        {!roomState.ranked && (
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            <span className="text-[10px] font-oswald uppercase tracking-wider text-gray-500">Товарищеская игра</span>
           </div>
         )}
 
