@@ -119,8 +119,6 @@ def login_with_token(body):
         'access_token': access_token,
         'client_id': VK_APP_ID,
     })
-    print(f"[LOGIN] user_info response: {user_info}")
-
     user_data = user_info.get('user', user_info)
     uid = user_data.get('user_id') or user_info.get('user_id') or vk_user_id
     first_name = user_data.get('first_name', '') or user_info.get('first_name', '')
