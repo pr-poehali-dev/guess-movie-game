@@ -1,5 +1,5 @@
 import { GameStats } from '@/pages/Index';
-import { achievements } from '@/data/movies';
+import { useAchievements } from '@/hooks/useAchievements';
 import { useHomeImages } from '@/hooks/useTmdbImages';
 import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
@@ -10,6 +10,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onStart, stats }: HomePageProps) {
+  const { achievements } = useAchievements();
   const unlockedCount = stats.unlockedAchievements.length;
   const images = useHomeImages();
   const { isAuthenticated, user, login } = useAuth();

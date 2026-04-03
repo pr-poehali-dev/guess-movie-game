@@ -61,6 +61,40 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "List achievements public",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "list_achievements"},
+      "expectedStatus": 200
+    },
+    {
+      "name": "Admin list without key",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "admin_list_achievements"},
+      "expectedStatus": 403,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Admin save without key",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "admin_save_achievement", "achievement": {"id": "test", "title": "Test"}},
+      "expectedStatus": 403,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Admin delete without key",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "admin_delete_achievement", "achievement_id": "test"},
+      "expectedStatus": 403,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Unknown action",
       "method": "POST",
       "path": "/",

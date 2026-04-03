@@ -19,14 +19,7 @@ SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 VK_APP_ID = os.environ.get('VK_APP_ID', '')
 VK_APP_SECRET = os.environ.get('VK_APP_SECRET', '')
 
-ACHIEVEMENTS = [
-    {'id': 'first_correct', 'type': 'score', 'requirement': 1},
-    {'id': 'streak_5', 'type': 'score', 'requirement': 5},
-    {'id': 'streak_10', 'type': 'score', 'requirement': 10},
-    {'id': 'streak_20', 'type': 'score', 'requirement': 20},
-    {'id': 'godlike', 'type': 'score', 'requirement': 30},
-    {'id': 'survivor', 'type': 'perfect', 'requirement': 1},
-]
+ADMIN_SECRET = os.environ.get('ADMIN_SECRET', '')
 
 
 def get_conn():
@@ -185,6 +178,34 @@ def save_user_and_session(vk_user_id, first_name, last_name, photo_url, access_t
     })
 
 
+def validate_admin(body):
+    admin_key = body.get('admin_key', '')
+    if not ADMIN_SECRET or admin_key != ADMIN_SECRET:
+        return False
+    return True
+
+
+def load_achievements(cur):
+    cur.execute(
+        f"""SELECT id, title, description, icon, type, requirement, sort_order, is_active
+        FROM {SCHEMA}.achievements ORDER BY sort_order, id"""
+    )
+    rows = cur.fetchall()
+    return [
+        {'id': r[0], 'title': r[1], 'description': r[2], 'icon': r[3],
+         'type': r[4], 'requirement': r[5], 'sort_order': r[6], 'is_active': r[7]}
+        for r in rows
+    ]
+
+
+def load_active_achievements(cur):
+    cur.execute(
+        f"""SELECT id, type, requirement FROM {SCHEMA}.achievements
+        WHERE is_active = TRUE ORDER BY sort_order"""
+    )
+    return [{'id': r[0], 'type': r[1], 'requirement': r[2]} for r in cur.fetchall()]
+
+
 def get_user_achievements(cur, user_id):
     cur.execute(
         f"SELECT achievement_id FROM {SCHEMA}.user_achievements WHERE user_id = %s",
@@ -195,8 +216,9 @@ def get_user_achievements(cur, user_id):
 
 def grant_achievements(cur, user_id, total_score, game_score, perfect_round):
     existing = set(get_user_achievements(cur, user_id))
+    active = load_active_achievements(cur)
     newly_granted = []
-    for ach in ACHIEVEMENTS:
+    for ach in active:
         if ach['id'] in existing:
             continue
         if ach['type'] == 'score' and total_score >= ach['requirement']:
@@ -441,6 +463,100 @@ def get_achievements(body):
     return resp(200, {'achievements': unlocked})
 
 
+def list_achievements(body):
+    """Публичный список всех активных достижений"""
+    conn = get_conn()
+    cur = conn.cursor()
+    all_ach = load_achievements(cur)
+    cur.close()
+    conn.close()
+    return resp(200, {'achievements': all_ach})
+
+
+def admin_list_achievements(body):
+    """Список всех достижений для админки (включая неактивные)"""
+    if not validate_admin(body):
+        return resp(403, {'error': 'Доступ запрещён'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+    all_ach = load_achievements(cur)
+    cur.close()
+    conn.close()
+    return resp(200, {'achievements': all_ach})
+
+
+def admin_save_achievement(body):
+    """Создание или обновление достижения"""
+    if not validate_admin(body):
+        return resp(403, {'error': 'Доступ запрещён'})
+
+    ach = body.get('achievement', {})
+    ach_id = ach.get('id', '').strip()
+    title = ach.get('title', '').strip()
+    description = ach.get('description', '').strip()
+    icon = ach.get('icon', '').strip()
+    ach_type = ach.get('type', 'score')
+    requirement = int(ach.get('requirement', 1))
+    sort_order = int(ach.get('sort_order', 0))
+    is_active = bool(ach.get('is_active', True))
+
+    if not ach_id or not title:
+        return resp(400, {'error': 'id и title обязательны'})
+
+    if ach_type not in ('score', 'perfect'):
+        return resp(400, {'error': 'type должен быть score или perfect'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"""INSERT INTO {SCHEMA}.achievements (id, title, description, icon, type, requirement, sort_order, is_active, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            icon = EXCLUDED.icon,
+            type = EXCLUDED.type,
+            requirement = EXCLUDED.requirement,
+            sort_order = EXCLUDED.sort_order,
+            is_active = EXCLUDED.is_active,
+            updated_at = NOW()
+        RETURNING id""",
+        (ach_id, title, description, icon, ach_type, requirement, sort_order, is_active)
+    )
+    conn.commit()
+
+    all_ach = load_achievements(cur)
+    cur.close()
+    conn.close()
+
+    return resp(200, {'ok': True, 'achievements': all_ach})
+
+
+def admin_delete_achievement(body):
+    """Удаление достижения (деактивация)"""
+    if not validate_admin(body):
+        return resp(403, {'error': 'Доступ запрещён'})
+
+    ach_id = body.get('achievement_id', '').strip()
+    if not ach_id:
+        return resp(400, {'error': 'achievement_id обязателен'})
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE {SCHEMA}.achievements SET is_active = FALSE, updated_at = NOW() WHERE id = %s",
+        (ach_id,)
+    )
+    conn.commit()
+
+    all_ach = load_achievements(cur)
+    cur.close()
+    conn.close()
+
+    return resp(200, {'ok': True, 'achievements': all_ach})
+
+
 def handler(event: dict, context) -> dict:
     if event.get('httpMethod') == 'OPTIONS':
         return resp(200, {})
@@ -467,5 +583,13 @@ def handler(event: dict, context) -> dict:
         return leaderboard(body)
     elif action == 'get_achievements':
         return get_achievements(body)
+    elif action == 'list_achievements':
+        return list_achievements(body)
+    elif action == 'admin_list_achievements':
+        return admin_list_achievements(body)
+    elif action == 'admin_save_achievement':
+        return admin_save_achievement(body)
+    elif action == 'admin_delete_achievement':
+        return admin_delete_achievement(body)
     else:
         return resp(400, {'error': f'Неизвестное действие: {action}'})

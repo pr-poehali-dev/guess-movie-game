@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Movie, achievements } from '@/data/movies';
+import { Movie } from '@/data/movies';
+import { useAchievements } from '@/hooks/useAchievements';
 import { useRoundBasedImages } from '@/hooks/useTmdbImages';
 import { GameStats } from '@/pages/Index';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +16,7 @@ type GameState = 'playing' | 'answered' | 'gameover' | 'round-complete';
 const QUESTIONS_PER_ROUND = 10;
 
 export default function GamePage({ onFinish, stats }: GamePageProps) {
+  const { achievements } = useAchievements();
   const { user, isAuthenticated } = useAuth();
   const { loading: moviesLoading, getNewBatch, resetUsed } = useRoundBasedImages();
   const [queue, setQueue] = useState<Movie[]>([]);
@@ -50,7 +52,7 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
       if (ach.type === 'perfect' && perfect) earned.push(ach.id);
     }
     return earned;
-  }, []);
+  }, [achievements]);
 
   const handleAnswer = (index: number) => {
     if (gameState !== 'playing') return;

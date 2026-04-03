@@ -1,5 +1,5 @@
 import { GameStats } from '@/pages/Index';
-import { achievements } from '@/data/movies';
+import { useAchievements } from '@/hooks/useAchievements';
 import Icon from '@/components/ui/icon';
 
 interface LeaderboardProps {
@@ -10,6 +10,7 @@ interface LeaderboardProps {
 const medals = ['🥇', '🥈', '🥉'];
 
 export default function LeaderboardPage({ leaderboard, stats }: LeaderboardProps) {
+  const { achievements } = useAchievements();
   const playerName = localStorage.getItem('kinovikto_name') || 'Игрок';
 
   return (

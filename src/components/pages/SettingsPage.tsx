@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GameStats } from '@/pages/Index';
-import { achievements } from '@/data/movies';
+import { useAchievements } from '@/hooks/useAchievements';
 import { useAuth } from '@/hooks/useAuth';
 import Icon from '@/components/ui/icon';
 
@@ -10,6 +10,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ stats, onResetStats }: SettingsPageProps) {
+  const { achievements } = useAchievements();
   const { user, isAuthenticated, login } = useAuth();
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('kinovikto_name') || '');
   const [saved, setSaved] = useState(false);
