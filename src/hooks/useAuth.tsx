@@ -47,6 +47,7 @@ export interface VkUser {
   perfect_rounds: number;
   solo_rating: number;
   online_rating: number;
+  unlocked_achievements: string[];
 }
 
 export interface VkFriend {

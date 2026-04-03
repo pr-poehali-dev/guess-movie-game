@@ -29,6 +29,16 @@ const defaultStats: GameStats = {
   perfectRounds: 0,
 };
 
+function mergeStatsWithServer(local: GameStats, user: { total_score: number; games_played: number; best_score: number; perfect_rounds: number; unlocked_achievements: string[] }): GameStats {
+  return {
+    totalScore: user.total_score,
+    gamesPlayed: user.games_played,
+    bestScore: user.best_score,
+    perfectRounds: user.perfect_rounds,
+    unlockedAchievements: user.unlocked_achievements || [],
+  };
+}
+
 export default function Index() {
   const [page, setPage] = useState<Page>('home');
   const { user, isAuthenticated, updateStats: updateServerStats } = useAuth();
@@ -60,6 +70,9 @@ export default function Index() {
       if (vkName) {
         localStorage.setItem('kinovikto_name', vkName);
       }
+      setStats(prev => mergeStatsWithServer(prev, user));
+    } else if (!isAuthenticated) {
+      setStats(prev => ({ ...prev, unlockedAchievements: [] }));
     }
   }, [isAuthenticated, user]);
 
@@ -79,7 +92,9 @@ export default function Index() {
         gamesPlayed: prev.gamesPlayed + 1,
         bestScore: Math.max(prev.bestScore, newScore),
         perfectRounds: prev.perfectRounds + (perfectRound ? 1 : 0),
-        unlockedAchievements: [...new Set([...prev.unlockedAchievements, ...newAchievements])],
+        unlockedAchievements: isAuthenticated
+          ? [...new Set([...prev.unlockedAchievements, ...newAchievements])]
+          : [],
       };
       return updated;
     });

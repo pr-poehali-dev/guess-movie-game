@@ -62,12 +62,14 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
       const newTotal = totalScore + 1;
       setRoundScore(newRoundScore);
       setTotalScore(newTotal);
-      const earned = checkAchievements(newTotal, lostLives === 0, stats.unlockedAchievements);
-      if (earned.length > 0) {
-        setNewAchievements(prev => [...prev, ...earned]);
-        const achData = achievements.find(a => a.id === earned[0]);
-        if (achData) setShowAchievement(achData.title + ' ' + achData.icon);
-        setTimeout(() => setShowAchievement(null), 3000);
+      if (isAuthenticated) {
+        const earned = checkAchievements(newTotal, lostLives === 0, stats.unlockedAchievements);
+        if (earned.length > 0) {
+          setNewAchievements(prev => [...prev, ...earned]);
+          const achData = achievements.find(a => a.id === earned[0]);
+          if (achData) setShowAchievement(achData.title + ' ' + achData.icon);
+          setTimeout(() => setShowAchievement(null), 3000);
+        }
       }
     } else {
       const newLives = lives - 1;
@@ -106,9 +108,13 @@ export default function GamePage({ onFinish, stats }: GamePageProps) {
 
   const handleFinish = () => {
     const perfect = lostLives === 0 && totalScore > 0;
-    const earned = checkAchievements(totalScore, perfect, stats.unlockedAchievements);
-    const allEarned = [...new Set([...newAchievements, ...earned])];
-    onFinish(totalScore, perfect, allEarned);
+    if (isAuthenticated) {
+      const earned = checkAchievements(totalScore, perfect, stats.unlockedAchievements);
+      const allEarned = [...new Set([...newAchievements, ...earned])];
+      onFinish(totalScore, perfect, allEarned);
+    } else {
+      onFinish(totalScore, perfect, []);
+    }
   };
 
   const handleRestart = () => {

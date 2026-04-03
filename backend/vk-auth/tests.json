@@ -52,6 +52,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Get achievements without token",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "get_achievements"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Unknown action",
       "method": "POST",
       "path": "/",

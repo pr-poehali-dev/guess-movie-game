@@ -19,6 +19,15 @@ SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 VK_APP_ID = os.environ.get('VK_APP_ID', '')
 VK_APP_SECRET = os.environ.get('VK_APP_SECRET', '')
 
+ACHIEVEMENTS = [
+    {'id': 'first_correct', 'type': 'score', 'requirement': 1},
+    {'id': 'streak_5', 'type': 'score', 'requirement': 5},
+    {'id': 'streak_10', 'type': 'score', 'requirement': 10},
+    {'id': 'streak_20', 'type': 'score', 'requirement': 20},
+    {'id': 'godlike', 'type': 'score', 'requirement': 30},
+    {'id': 'survivor', 'type': 'perfect', 'requirement': 1},
+]
+
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -176,6 +185,34 @@ def save_user_and_session(vk_user_id, first_name, last_name, photo_url, access_t
     })
 
 
+def get_user_achievements(cur, user_id):
+    cur.execute(
+        f"SELECT achievement_id FROM {SCHEMA}.user_achievements WHERE user_id = %s",
+        (user_id,)
+    )
+    return [row[0] for row in cur.fetchall()]
+
+
+def grant_achievements(cur, user_id, total_score, game_score, perfect_round):
+    existing = set(get_user_achievements(cur, user_id))
+    newly_granted = []
+    for ach in ACHIEVEMENTS:
+        if ach['id'] in existing:
+            continue
+        if ach['type'] == 'score' and total_score >= ach['requirement']:
+            newly_granted.append(ach['id'])
+        elif ach['type'] == 'perfect' and perfect_round and game_score > 0:
+            newly_granted.append(ach['id'])
+
+    for ach_id in newly_granted:
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.user_achievements (user_id, achievement_id)
+            VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+            (user_id, ach_id)
+        )
+    return newly_granted
+
+
 def me(body):
     result = validate_session(body)
     if not result:
@@ -192,11 +229,15 @@ def me(body):
         (user_id,)
     )
     row = cur.fetchone()
-    cur.close()
-    conn.close()
 
     if not row:
+        cur.close()
+        conn.close()
         return resp(404, {'error': 'Пользователь не найден'})
+
+    unlocked = get_user_achievements(cur, user_id)
+    cur.close()
+    conn.close()
 
     return resp(200, {
         'user': {
@@ -214,6 +255,7 @@ def me(body):
             'perfect_rounds': row[11] or 0,
             'solo_rating': row[12] or 0,
             'online_rating': row[13] or 50,
+            'unlocked_achievements': unlocked,
         }
     })
 
@@ -299,6 +341,8 @@ def update_stats(body):
         )
 
     user_row = cur.fetchone()
+    new_total_score = user_row[5] or 0
+    perfect_round = game_result == 'win' and game_type == 'solo'
 
     cur.execute(
         f"""INSERT INTO {SCHEMA}.game_history
@@ -306,6 +350,10 @@ def update_stats(body):
         VALUES (%s, %s, %s, %s, %s, %s)""",
         (user_id, score, game_result, game_type, opponent_name, room_id)
     )
+
+    new_achievements = grant_achievements(cur, user_id, new_total_score, score, perfect_round)
+    all_achievements = get_user_achievements(cur, user_id)
+
     conn.commit()
     cur.close()
     conn.close()
@@ -317,7 +365,7 @@ def update_stats(body):
             'first_name': user_row[2],
             'last_name': user_row[3],
             'photo_url': user_row[4],
-            'total_score': user_row[5] or 0,
+            'total_score': new_total_score,
             'games_played': user_row[6] or 0,
             'best_score': user_row[7] or 0,
             'wins': user_row[8] or 0,
@@ -326,7 +374,9 @@ def update_stats(body):
             'perfect_rounds': user_row[11] or 0,
             'solo_rating': user_row[12] or 0,
             'online_rating': user_row[13] or 50,
-        }
+            'unlocked_achievements': all_achievements,
+        },
+        'new_achievements': new_achievements,
     })
 
 
@@ -377,6 +427,20 @@ def leaderboard(body):
     return resp(200, {'players': players, 'rating_type': rating_type})
 
 
+def get_achievements(body):
+    """Получение достижений авторизованного пользователя"""
+    result = validate_session(body)
+    if not result:
+        return resp(401, {'error': 'Сессия не найдена или истекла'})
+
+    user_id, conn, cur = result
+    unlocked = get_user_achievements(cur, user_id)
+    cur.close()
+    conn.close()
+
+    return resp(200, {'achievements': unlocked})
+
+
 def handler(event: dict, context) -> dict:
     if event.get('httpMethod') == 'OPTIONS':
         return resp(200, {})
@@ -401,5 +465,7 @@ def handler(event: dict, context) -> dict:
         return update_stats(body)
     elif action == 'leaderboard':
         return leaderboard(body)
+    elif action == 'get_achievements':
+        return get_achievements(body)
     else:
         return resp(400, {'error': f'Неизвестное действие: {action}'})
