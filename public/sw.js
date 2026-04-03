@@ -1,9 +1,7 @@
-const CACHE_NAME = 'kinoviktorina-v2';
+const CACHE_NAME = 'kinoviktorina-v3';
 
 const PRECACHE_URLS = [
   '/',
-  '/index.html',
-  '/icon.svg',
   '/manifest.json'
 ];
 
